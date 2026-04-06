@@ -1,4 +1,6 @@
+import LZString from 'lz-string';
 import type { Stroke } from '../hooks/useDrawing';
+import { simplifyStroke } from './strokeSimplify';
 
 export interface MapState {
   center: [number, number];
@@ -7,29 +9,51 @@ export interface MapState {
   pin?: [number, number] | null;
 }
 
-/** Encode MapState as a URL-safe base64 string. Coordinates are rounded to 5 decimal places (~1 m precision). */
+// Prefix used to distinguish LZ-compressed payloads from legacy plain base64.
+const LZ_PREFIX = 'z:';
+
+/** Round a coordinate to 5 decimal places (~1 m precision). */
+function roundCoord(v: number): number {
+  return Math.round(v * 1e5) / 1e5;
+}
+
+/**
+ * Encode MapState as a URL-safe compressed string.
+ * Pipeline: simplify strokes → round coords → JSON → LZ-compress → URI-safe string.
+ */
 export function encodeMapState(state: MapState): string {
   const compact: MapState = {
     ...state,
+    center: [roundCoord(state.center[0]), roundCoord(state.center[1])],
+    pin: state.pin
+      ? [roundCoord(state.pin[0]), roundCoord(state.pin[1])]
+      : state.pin,
     strokes: state.strokes.map((s) => ({
       ...s,
-      points: s.points.map(([lat, lng]) => [
-        Math.round(lat * 1e5) / 1e5,
-        Math.round(lng * 1e5) / 1e5,
-      ] as [number, number]),
+      points: simplifyStroke(
+        s.points.map(([lat, lng]) => [roundCoord(lat), roundCoord(lng)]),
+      ),
     })),
   };
-  return btoa(JSON.stringify(compact))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
+  return LZ_PREFIX + LZString.compressToEncodedURIComponent(JSON.stringify(compact));
 }
 
-/** Decode a URL-safe base64 string back to MapState. Returns null on failure. */
+/** Decode a MapState string produced by encodeMapState (or the legacy base64 format). */
 export function decodeMapState(encoded: string): MapState | null {
   try {
-    const base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
-    const parsed = JSON.parse(atob(base64)) as unknown;
+    let json: string;
+    if (encoded.startsWith(LZ_PREFIX)) {
+      const decompressed = LZString.decompressFromEncodedURIComponent(
+        encoded.slice(LZ_PREFIX.length),
+      );
+      if (!decompressed) return null;
+      json = decompressed;
+    } else {
+      // Legacy: plain URL-safe base64
+      const base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+      json = atob(base64);
+    }
+    const parsed = JSON.parse(json) as unknown;
     if (
       typeof parsed === 'object' &&
       parsed !== null &&
