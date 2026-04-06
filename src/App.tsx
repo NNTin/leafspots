@@ -4,7 +4,7 @@ import MapView from './components/MapView';
 import LocationInput from './components/LocationInput';
 import DrawingControls from './components/DrawingControls';
 import ShareButton from './components/ShareButton';
-import SocialIcons from './components/SocialIcons';
+import SidebarSocialIcons from './components/SidebarSocialIcons';
 import type { MenuItem } from './components/OverflowMenuBar';
 import { useDrawing } from './hooks/useDrawing';
 import { usePins } from './hooks/usePins';
@@ -232,7 +232,7 @@ function App() {
                 🔄 Rotate your phone to horizontal mode for a better experience
               </div>
             ) : (
-              <SocialIcons />
+              <SidebarSocialIcons />
             )}
           </aside>
         )}
