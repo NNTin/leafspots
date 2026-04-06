@@ -142,7 +142,7 @@ export default function DrawingCanvas({
         left: 0,
         width: size.x,
         height: size.y,
-        zIndex: 1000,
+        zIndex: drawMode ? 1000 : 450,
         pointerEvents: drawMode ? 'all' : 'none',
         cursor: drawMode ? 'crosshair' : 'default',
         touchAction: drawMode ? 'none' : 'auto',

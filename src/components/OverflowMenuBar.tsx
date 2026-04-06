@@ -17,6 +17,7 @@ const GAP = 6; // must match CSS gap value
 export default function OverflowMenuBar({ items, onOverflowChange, className }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
+  const lastOverflowSignatureRef = useRef<string>('');
 
   const [overflowStart, setOverflowStart] = useState<number>(items.length);
 
@@ -69,7 +70,13 @@ export default function OverflowMenuBar({ items, onOverflowChange, className }: 
 
   // Report overflow items to parent whenever overflowStart or items change
   useEffect(() => {
-    onOverflowChange?.(items.slice(overflowStart));
+    if (!onOverflowChange) return;
+    const overflow = items.slice(overflowStart);
+    const signature = overflow.map((item) => item.id).join('\0');
+    if (signature !== lastOverflowSignatureRef.current) {
+      lastOverflowSignatureRef.current = signature;
+      onOverflowChange(overflow);
+    }
   }, [overflowStart, items, onOverflowChange]);
 
   const visibleItems = items.slice(0, overflowStart);

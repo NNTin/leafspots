@@ -1,6 +1,5 @@
 import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
-import type { Spot } from '../data/spots';
 import { formatDistance } from '../utils/distance';
 
 // Fix default icon URLs broken by Vite's asset bundling
@@ -15,16 +14,12 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-const categoryColors: Record<string, string> = {
-  swimming: '#2196f3',
-  hiking: '#4caf50',
-  'beer garden': '#ff9800',
-  cycling: '#9c27b0',
-  skiing: '#00bcd4',
-};
+function sanitizeColor(color: string): string {
+  return /^#[0-9a-fA-F]{3,8}$/.test(color) ? color : '#607d8b';
+}
 
-function createColoredIcon(category: string) {
-  const color = categoryColors[category] ?? '#607d8b';
+function createColoredIcon(color: string) {
+  const safeColor = sanitizeColor(color);
   return L.divIcon({
     className: '',
     html: `<div style="
@@ -32,7 +27,7 @@ function createColoredIcon(category: string) {
       height: 28px;
       border-radius: 50% 50% 50% 0;
       transform: rotate(-45deg);
-      background: ${color};
+      background: ${safeColor};
       border: 3px solid white;
       box-shadow: 0 2px 6px rgba(0,0,0,0.4);
     "></div>`,
@@ -43,22 +38,59 @@ function createColoredIcon(category: string) {
 }
 
 interface SpotMarkerProps {
-  spot: Spot;
+  lat: number;
+  lng: number;
+  name: string;
+  color: string;
+  badgeText?: string;
+  description?: string;
   distanceKm?: number;
+  draggable?: boolean;
+  onDragEnd?: (lat: number, lng: number) => void;
 }
 
-export default function SpotMarker({ spot, distanceKm }: SpotMarkerProps) {
-  const icon = createColoredIcon(spot.category);
+export default function SpotMarker({
+  lat,
+  lng,
+  name,
+  color,
+  badgeText,
+  description,
+  distanceKm,
+  draggable = false,
+  onDragEnd,
+}: SpotMarkerProps) {
+  const icon = createColoredIcon(color);
+  const eventHandlers = {
+    click: (e: L.LeafletEvent) => {
+      (e.target as L.Marker).openPopup();
+    },
+    ...(draggable && onDragEnd
+      ? {
+          dragend: (e: L.LeafletEvent) => {
+            const { lat: nextLat, lng: nextLng } = (e.target as L.Marker).getLatLng();
+            onDragEnd(nextLat, nextLng);
+          },
+        }
+      : {}),
+  };
 
   return (
-    <Marker position={[spot.lat, spot.lng]} icon={icon}>
+    <Marker
+      position={[lat, lng]}
+      icon={icon}
+      draggable={draggable}
+      eventHandlers={eventHandlers}
+    >
       <Popup>
         <div className="spot-popup">
-          <h3>{spot.name}</h3>
-          <span className="spot-category" style={{ background: categoryColors[spot.category] ?? '#607d8b' }}>
-            {spot.category}
-          </span>
-          {spot.description && <p>{spot.description}</p>}
+          <h3>{name}</h3>
+          {badgeText && (
+            <span className="spot-category" style={{ background: sanitizeColor(color) }}>
+              {badgeText}
+            </span>
+          )}
+          {description && <p>{description}</p>}
           {distanceKm !== undefined && (
             <p className="spot-distance">📍 {formatDistance(distanceKm)} away</p>
           )}

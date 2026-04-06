@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import OverflowMenuBar from './OverflowMenuBar';
 import type { MenuItem } from './OverflowMenuBar';
 
@@ -43,150 +44,171 @@ export default function DrawingControls({
   onPinColorChange,
   onOverflowChange,
 }: Props) {
-  const items: MenuItem[] = [];
+  const items: MenuItem[] = useMemo(() => {
+    const nextItems: MenuItem[] = [];
 
-  // ── Draw toggle ──────────────────────────────────────────
-  items.push({
-    id: 'draw-toggle',
-    node: (
-      <button
-        className={`draw-btn${drawMode ? ' active' : ''}`}
-        onClick={onToggleDrawMode}
-        title={drawMode ? 'Exit Draw Mode — pan map' : 'Enter Draw Mode — draw on map'}
-      >
-        {drawMode ? '✋ Pan' : '✏️ Draw'}
-      </button>
-    ),
-  });
-
-  // ── Draw sub-controls (only when drawMode) ───────────────
-  if (drawMode) {
-    items.push({
-      id: 'draw-colors',
+    // ── Draw toggle ──────────────────────────────────────────
+    nextItems.push({
+      id: 'draw-toggle',
       node: (
-        <div className="color-swatches">
-          {PRESET_COLORS.map((c) => (
-            <button
-              key={c}
-              className={`color-swatch${strokeColor === c ? ' selected' : ''}`}
-              style={{ background: c }}
-              onClick={() => onColorChange(c)}
-              title={c}
-              aria-label={`Stroke color ${c}`}
-            />
-          ))}
-        </div>
+        <button
+          className={`draw-btn${drawMode ? ' active' : ''}`}
+          onClick={onToggleDrawMode}
+          title={drawMode ? 'Exit Draw Mode — pan map' : 'Enter Draw Mode — draw on map'}
+        >
+          {drawMode ? '✋ Pan' : '✏️ Draw'}
+        </button>
       ),
     });
-    items.push({
-      id: 'draw-widths',
-      node: (
-        <div className="width-btns">
-          {PRESET_WIDTHS.map((w) => (
-            <button
-              key={w}
-              className={`width-btn${strokeWidth === w ? ' active' : ''}`}
-              onClick={() => onWidthChange(w)}
-              title={`Stroke width ${w}px`}
-              aria-label={`Stroke width ${w}px`}
-            >
-              <span
-                style={{
-                  display: 'block',
-                  width: 18,
-                  height: w,
-                  background: 'currentColor',
-                  borderRadius: 2,
-                }}
+
+    // ── Draw sub-controls (only when drawMode) ───────────────
+    if (drawMode) {
+      nextItems.push({
+        id: 'draw-colors',
+        node: (
+          <div className="color-swatches">
+            {PRESET_COLORS.map((c) => (
+              <button
+                key={c}
+                className={`color-swatch${strokeColor === c ? ' selected' : ''}`}
+                style={{ background: c }}
+                onClick={() => onColorChange(c)}
+                title={c}
+                aria-label={`Stroke color ${c}`}
               />
-            </button>
-          ))}
-        </div>
-      ),
-    });
-  }
+            ))}
+          </div>
+        ),
+      });
+      nextItems.push({
+        id: 'draw-widths',
+        node: (
+          <div className="width-btns">
+            {PRESET_WIDTHS.map((w) => (
+              <button
+                key={w}
+                className={`width-btn${strokeWidth === w ? ' active' : ''}`}
+                onClick={() => onWidthChange(w)}
+                title={`Stroke width ${w}px`}
+                aria-label={`Stroke width ${w}px`}
+              >
+                <span
+                  style={{
+                    display: 'block',
+                    width: 18,
+                    height: w,
+                    background: 'currentColor',
+                    borderRadius: 2,
+                  }}
+                />
+              </button>
+            ))}
+          </div>
+        ),
+      });
+    }
 
-  // ── Stroke actions (only when there are strokes) ─────────
-  if (hasStrokes) {
-    items.push({
-      id: 'draw-undo',
+    // ── Stroke actions (only when there are strokes) ─────────
+    if (hasStrokes) {
+      nextItems.push({
+        id: 'draw-undo',
+        node: (
+          <button className="draw-action-btn" onClick={onUndo} title="Undo last stroke" aria-label="Undo last stroke">
+            ↩
+          </button>
+        ),
+      });
+      nextItems.push({
+        id: 'draw-clear',
+        node: (
+          <button className="draw-action-btn" onClick={onClear} title="Clear all drawings" aria-label="Clear all drawings">
+            🗑
+          </button>
+        ),
+      });
+    }
+
+    // ── Pin toggle ───────────────────────────────────────────
+    nextItems.push({
+      id: 'pin-toggle',
       node: (
-        <button className="draw-action-btn" onClick={onUndo} title="Undo last stroke" aria-label="Undo last stroke">
-          ↩
+        <button
+          className={`draw-btn${pinMode ? ' active' : ''}`}
+          onClick={onTogglePinMode}
+          title={pinMode ? 'Exit Pin Mode — click to stop placing pins' : 'Enter Pin Mode — click map to place pins'}
+        >
+          {pinMode ? '📍 Pinning…' : '📍 Pin'}
         </button>
       ),
     });
-    items.push({
-      id: 'draw-clear',
+
+    // ── Pin sub-controls (only when pinMode) ────────────────
+    if (pinMode) {
+      nextItems.push({
+        id: 'pin-colors',
+        node: (
+          <div className="color-swatches">
+            {PRESET_COLORS.map((c) => (
+              <button
+                key={c}
+                className={`color-swatch${pinColor === c ? ' selected' : ''}`}
+                style={{ background: c }}
+                onClick={() => onPinColorChange(c)}
+                title={c}
+                aria-label={`Pin color ${c}`}
+              />
+            ))}
+          </div>
+        ),
+      });
+    }
+
+    // ── Pin clear (only when there are pins) ─────────────────
+    if (hasPins) {
+      nextItems.push({
+        id: 'pin-clear',
+        node: (
+          <button className="draw-action-btn" onClick={onClearPins} title="Clear all pins" aria-label="Clear all pins">
+            🗑
+          </button>
+        ),
+      });
+    }
+
+    // ── Share link ───────────────────────────────────────────
+    nextItems.push({
+      id: 'share',
       node: (
-        <button className="draw-action-btn" onClick={onClear} title="Clear all drawings" aria-label="Clear all drawings">
-          🗑
+        <button
+          className="draw-action-btn"
+          onClick={onExport}
+          title="Copy shareable link to clipboard"
+          aria-label="Share map"
+        >
+          🔗
         </button>
       ),
     });
-  }
 
-  // ── Pin toggle ───────────────────────────────────────────
-  items.push({
-    id: 'pin-toggle',
-    node: (
-      <button
-        className={`draw-btn${pinMode ? ' active' : ''}`}
-        onClick={onTogglePinMode}
-        title={pinMode ? 'Exit Pin Mode — click to stop placing pins' : 'Enter Pin Mode — click map to place pins'}
-      >
-        {pinMode ? '📍 Pinning…' : '📍 Pin'}
-      </button>
-    ),
-  });
-
-  // ── Pin sub-controls (only when pinMode) ────────────────
-  if (pinMode) {
-    items.push({
-      id: 'pin-colors',
-      node: (
-        <div className="color-swatches">
-          {PRESET_COLORS.map((c) => (
-            <button
-              key={c}
-              className={`color-swatch${pinColor === c ? ' selected' : ''}`}
-              style={{ background: c }}
-              onClick={() => onPinColorChange(c)}
-              title={c}
-              aria-label={`Pin color ${c}`}
-            />
-          ))}
-        </div>
-      ),
-    });
-  }
-
-  // ── Pin clear (only when there are pins) ─────────────────
-  if (hasPins) {
-    items.push({
-      id: 'pin-clear',
-      node: (
-        <button className="draw-action-btn" onClick={onClearPins} title="Clear all pins" aria-label="Clear all pins">
-          🗑
-        </button>
-      ),
-    });
-  }
-
-  // ── Share link ───────────────────────────────────────────
-  items.push({
-    id: 'share',
-    node: (
-      <button
-        className="draw-action-btn"
-        onClick={onExport}
-        title="Copy shareable link to clipboard"
-        aria-label="Share map"
-      >
-        🔗
-      </button>
-    ),
-  });
+    return nextItems;
+  }, [
+    drawMode,
+    hasStrokes,
+    onToggleDrawMode,
+    strokeColor,
+    onColorChange,
+    strokeWidth,
+    onWidthChange,
+    onUndo,
+    onClear,
+    pinMode,
+    onTogglePinMode,
+    pinColor,
+    onPinColorChange,
+    hasPins,
+    onClearPins,
+    onExport,
+  ]);
 
   return <OverflowMenuBar items={items} onOverflowChange={onOverflowChange} className="drawing-controls" />;
 }

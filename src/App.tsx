@@ -1,9 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
-import { spots as allSpots } from './data/spots';
-import type { Category } from './data/spots';
 import type { Coordinates } from './utils/distance';
 import MapView from './components/MapView';
-import Filters from './components/Filters';
 import LocationInput from './components/LocationInput';
 import DrawingControls from './components/DrawingControls';
 import ShareButton from './components/ShareButton';
@@ -21,7 +18,6 @@ const DEFAULT_ZOOM = 8;
 const urlState = loadStateFromUrl();
 
 function App() {
-  const [activeCategories, setActiveCategories] = useState<Set<Category>>(new Set());
   const [userLocation, setUserLocation] = useState<Coordinates | null>(
     urlState?.pin ? { lat: urlState.pin[0], lng: urlState.pin[1] } : null,
   );
@@ -161,8 +157,6 @@ function App() {
     return buildShareUrl(state);
   }, [strokes, userLocation, pins]);
 
-  const visibleSpots = allSpots.filter((s) => activeCategories.has(s.category));
-
   return (
     <div className="app">
       <header ref={headerRef} className="app-header">
@@ -227,10 +221,6 @@ function App() {
               userLocation={userLocation}
               onLocationChange={setUserLocation}
             />
-            <Filters
-              activeCategories={activeCategories}
-              onChange={setActiveCategories}
-            />
             <div className="share-panel">
               <ShareButton getShareUrl={getShareUrl} />
             </div>
@@ -238,7 +228,6 @@ function App() {
         )}
         <main className="map-container">
           <MapView
-            spots={visibleSpots}
             userLocation={userLocation}
             initialCenter={urlState?.center}
             initialZoom={urlState?.zoom}

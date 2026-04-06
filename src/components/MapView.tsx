@@ -1,17 +1,14 @@
-import { useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Marker, useMapEvents, useMap } from 'react-leaflet';
-import L from 'leaflet';
+import { useEffect } from 'react';
+import { MapContainer, TileLayer, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import type { Spot } from '../data/spots';
 import type { Coordinates } from '../utils/distance';
 import { haversineDistance } from '../utils/distance';
-import SpotMarker from './SpotMarker';
 import DrawingCanvas from './DrawingCanvas';
+import SpotMarker from './SpotMarker';
 import type { Stroke } from '../hooks/useDrawing';
 import type { CustomPin } from '../hooks/usePins';
 
 interface MapViewProps {
-  spots: Spot[];
   userLocation: Coordinates | null;
   initialCenter?: [number, number];
   initialZoom?: number;
@@ -51,9 +48,6 @@ function MapStateTracker({
   return null;
 }
 
-// Radius (px) of the user-location pin circle marker
-const PIN_RADIUS = 10;
-
 /** Listens for map clicks and places a new custom pin when in pin mode. */
 function PinPlacementHandler({
   pinMode,
@@ -85,40 +79,6 @@ function MapCursorHandler({ pinMode }: { pinMode: boolean }) {
   return null;
 }
 
-/** Validates that a color is a safe CSS hex color; falls back to a neutral grey. */
-function sanitizeColor(color: string): string {
-  return /^#[0-9a-fA-F]{3,8}$/.test(color) ? color : '#808080';
-}
-
-/** A draggable, colored circular marker for a custom pin. */
-function PinMarker({ pin, onMove }: { pin: CustomPin; onMove: (id: string, lat: number, lng: number) => void }) {
-  const safeColor = sanitizeColor(pin.color);
-  const icon = useMemo(
-    () =>
-      L.divIcon({
-        html: `<div style="width:16px;height:16px;border-radius:50%;background:${safeColor};border:2.5px solid rgba(0,0,0,0.45);box-shadow:0 1px 4px rgba(0,0,0,0.35);"></div>`,
-        className: '',
-        iconSize: [16, 16],
-        iconAnchor: [8, 8],
-      }),
-    [safeColor],
-  );
-
-  return (
-    <Marker
-      position={[pin.lat, pin.lng]}
-      icon={icon}
-      draggable={true}
-      eventHandlers={{
-        dragend: (e) => {
-          const { lat, lng } = (e.target as L.Marker).getLatLng();
-          onMove(pin.id, lat, lng);
-        },
-      }}
-    />
-  );
-}
-
 /** Calls invalidateSize whenever sidebarOpen toggles so Leaflet reflows correctly. */
 function MapSizeInvalidator({ sidebarOpen }: { sidebarOpen: boolean }) {
   const map = useMap();
@@ -131,7 +91,6 @@ function MapSizeInvalidator({ sidebarOpen }: { sidebarOpen: boolean }) {
 }
 
 export default function MapView({
-  spots,
   userLocation,
   initialCenter,
   initialZoom,
@@ -159,27 +118,40 @@ export default function MapView({
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      {spots.map((spot) => {
-        const distanceKm =
-          userLocation !== null
-            ? haversineDistance(userLocation, { lat: spot.lat, lng: spot.lng })
-            : undefined;
-        return <SpotMarker key={spot.id} spot={spot} distanceKm={distanceKm} />;
-      })}
       {userLocation && (
-        <CircleMarker
-          center={[userLocation.lat, userLocation.lng]}
-          radius={PIN_RADIUS}
-          pathOptions={{ color: '#1565c0', fillColor: '#1e88e5', fillOpacity: 0.9, weight: 2 }}
+        <SpotMarker
+          lat={userLocation.lat}
+          lng={userLocation.lng}
+          name="Your Location"
+          color="#1e88e5"
+          badgeText="your location"
+          description="Distances are measured from this marker."
         />
       )}
       <MapStateTracker onViewChange={onViewChange} />
       <MapSizeInvalidator sidebarOpen={sidebarOpen} />
       <PinPlacementHandler pinMode={pinMode} pinColor={pinColor} onPinAdd={onPinAdd} />
       <MapCursorHandler pinMode={pinMode} />
-      {pins.map((pin) => (
-        <PinMarker key={pin.id} pin={pin} onMove={onPinMove} />
-      ))}
+      {pins.map((pin, index) => {
+        const distanceKm =
+          userLocation !== null
+            ? haversineDistance(userLocation, { lat: pin.lat, lng: pin.lng })
+            : undefined;
+
+        return (
+          <SpotMarker
+            key={pin.id}
+            lat={pin.lat}
+            lng={pin.lng}
+            name={`Pin ${index + 1}`}
+            color={pin.color}
+            badgeText="pin"
+            distanceKm={distanceKm}
+            draggable={true}
+            onDragEnd={(lat, lng) => onPinMove(pin.id, lat, lng)}
+          />
+        );
+      })}
       <DrawingCanvas
         strokes={strokes}
         drawMode={drawMode}
