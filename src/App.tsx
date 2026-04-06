@@ -23,7 +23,7 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [strokeColor, setStrokeColor] = useState('#e53935');
   const [strokeWidth, setStrokeWidth] = useState(4);
-  const [copySuccess, setCopySuccess] = useState(false);
+  const [shareMessage, setShareMessage] = useState('');
 
   // Track current map view via refs (no re-render needed)
   const mapCenterRef = useRef<[number, number]>(urlState?.center ?? BAVARIA_CENTER);
@@ -45,13 +45,13 @@ function App() {
     };
     const url = buildShareUrl(state);
     navigator.clipboard.writeText(url).then(() => {
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
+      setShareMessage('✓ Link copied!');
+      setTimeout(() => setShareMessage(''), 2000);
     }).catch(() => {
-      // Fallback: update address bar so user can copy manually
+      // Clipboard unavailable — update address bar so user can copy manually
       window.history.replaceState(null, '', url);
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
+      setShareMessage('URL updated — copy from address bar');
+      setTimeout(() => setShareMessage(''), 4000);
     });
   }, [strokes]);
 
@@ -85,7 +85,7 @@ function App() {
         />
 
         <div className="header-right">
-          {copySuccess && <span className="copy-success">✓ Link copied!</span>}
+          {shareMessage && <span className="copy-success">{shareMessage}</span>}
           <span className="spot-count">
             {visibleSpots.length} spot{visibleSpots.length !== 1 ? 's' : ''} visible
           </span>
