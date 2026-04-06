@@ -6,6 +6,7 @@ import MapView from './components/MapView';
 import Filters from './components/Filters';
 import LocationInput from './components/LocationInput';
 import DrawingControls from './components/DrawingControls';
+import ShareButton from './components/ShareButton';
 import type { MenuItem } from './components/OverflowMenuBar';
 import { useDrawing } from './hooks/useDrawing';
 import { usePins } from './hooks/usePins';
@@ -149,6 +150,17 @@ function App() {
     return () => observer.disconnect();
   }, [recalculateTitle]);
 
+  const getShareUrl = useCallback((): string => {
+    const state: MapState = {
+      center: mapCenterRef.current,
+      zoom: mapZoomRef.current,
+      strokes,
+      pin: userLocation ? [userLocation.lat, userLocation.lng] : null,
+      pins: pins.map(({ lat, lng, color }) => [lat, lng, color]),
+    };
+    return buildShareUrl(state);
+  }, [strokes, userLocation, pins]);
+
   const visibleSpots = allSpots.filter((s) => activeCategories.has(s.category));
 
   return (
@@ -219,6 +231,9 @@ function App() {
               activeCategories={activeCategories}
               onChange={setActiveCategories}
             />
+            <div className="share-panel">
+              <ShareButton getShareUrl={getShareUrl} />
+            </div>
           </aside>
         )}
         <main className="map-container">
