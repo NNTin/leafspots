@@ -1,5 +1,4 @@
 import { deflateSync, inflateSync } from 'fflate';
-import LZString from 'lz-string';
 import type { Stroke } from '../hooks/useDrawing';
 import { simplifyStroke } from './strokeSimplify';
 
@@ -16,10 +15,7 @@ const COLORS = ['#e53935', '#1e88e5', '#43a047', '#f4511e', '#000000', '#ffffff'
 const WIDTHS = [2, 4, 6];
 
 // ─── Versioning prefixes ───────────────────────────────────────────────────────
-// v2: DEFLATE-compressed, base64url-encoded compact positional format (this file)
-// z:  legacy LZ-string format (decode only)
 const V2_PREFIX = 'v2:';
-const LZ_PREFIX = 'z:';
 
 // ─── Integer ↔ float helpers (5 decimal places ≈ 1 m precision) ───────────────
 function i5(v: number): number { return Math.round(v * 1e5); }
@@ -136,63 +132,28 @@ export function encodeMapState(state: MapState): string {
   return V2_PREFIX + toBase64Url(compressed);
 }
 
-/** Decode any MapState string: v2 compact, legacy LZ-string, or legacy plain base64. */
+/** Decode a MapState string produced by encodeMapState. */
 export function decodeMapState(encoded: string): MapState | null {
   try {
-    if (encoded.startsWith(V2_PREFIX)) {
-      const compressed = fromBase64Url(encoded.slice(V2_PREFIX.length));
-      const json = new TextDecoder().decode(inflateSync(compressed));
-      return fromCompactV2(JSON.parse(json) as CompactV2);
-    }
-
-    // Legacy LZ-string format
-    let json: string;
-    if (encoded.startsWith(LZ_PREFIX)) {
-      const decompressed = LZString.decompressFromEncodedURIComponent(
-        encoded.slice(LZ_PREFIX.length),
-      );
-      if (!decompressed) return null;
-      json = decompressed;
-    } else {
-      // Legacy plain URL-safe base64
-      json = atob(encoded.replace(/-/g, '+').replace(/_/g, '/'));
-    }
-    const parsed = JSON.parse(json) as unknown;
-    if (
-      typeof parsed === 'object' &&
-      parsed !== null &&
-      'center' in parsed &&
-      'zoom' in parsed &&
-      'strokes' in parsed
-    ) {
-      return parsed as MapState;
-    }
-    return null;
+    if (!encoded.startsWith(V2_PREFIX)) return null;
+    const compressed = fromBase64Url(encoded.slice(V2_PREFIX.length));
+    const json = new TextDecoder().decode(inflateSync(compressed));
+    return fromCompactV2(JSON.parse(json) as CompactV2);
   } catch {
     return null;
   }
 }
 
-/** Read MapState from the URL hash (#state=…) or, as fallback, the query param (?state=…). */
+/** Read MapState from the URL hash (#state=…). */
 export function loadStateFromUrl(): MapState | null {
-  // Prefer hash fragment — never sent to server, avoids 414 errors
-  const hashParams = new URLSearchParams(window.location.hash.slice(1));
-  const hashEncoded = hashParams.get('state');
-  if (hashEncoded) {
-    const state = decodeMapState(hashEncoded);
-    if (state) return state;
-  }
-
-  // Fall back to legacy query-param format
-  const encoded = new URLSearchParams(window.location.search).get('state');
+  const encoded = new URLSearchParams(window.location.hash.slice(1)).get('state');
   if (!encoded) return null;
   return decodeMapState(encoded);
 }
 
-/** Build a full shareable URL, placing state in the URL hash to avoid server-side 414 errors. */
+/** Build a full shareable URL, placing state in the URL hash. */
 export function buildShareUrl(state: MapState): string {
   const url = new URL(window.location.href);
-  url.searchParams.delete('state'); // remove any legacy query-param state
   url.hash = 'state=' + encodeMapState(state);
   return url.toString();
 }
