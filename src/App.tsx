@@ -117,11 +117,13 @@ function App() {
           onPinColorChange={setPinColor}
           onOverflowChange={setOverflowItems}
         />
-
-        <div className="header-right">
-          {shareMessage && <span className="copy-success">{shareMessage}</span>}
-        </div>
       </header>
+
+      {shareMessage && (
+        <div className="toast-notification" role="status" aria-live="polite">
+          {shareMessage}
+        </div>
+      )}
 
       <div className="app-body">
         {sidebarOpen && (

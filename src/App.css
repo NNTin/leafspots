@@ -43,21 +43,31 @@
   opacity: 0.9;
 }
 
-/* ── Header right ────────────────────────────────────────── */
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  justify-content: flex-end;
+/* ── Toast notification ───────────────────────────────────── */
+.toast-notification {
+  position: fixed;
+  top: 64px;
+  right: 16px;
+  z-index: 1200;
+  background: rgba(27, 94, 32, 0.95);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  max-width: min(90vw, 360px);
 }
 
-.copy-success {
-  font-size: 0.8rem;
-  background: rgba(255,255,255,0.25);
-  padding: 2px 8px;
-  border-radius: 10px;
-  white-space: nowrap;
+@media (max-width: 767px) {
+  .toast-notification {
+    top: auto;
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    max-width: none;
+  }
 }
 
 /* ── Drawing controls / overflow menu bar ────────────────── */
