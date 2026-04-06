@@ -60,12 +60,93 @@
   white-space: nowrap;
 }
 
-/* ── Drawing controls ────────────────────────────────────── */
+/* ── Drawing controls / overflow menu bar ────────────────── */
 .drawing-controls {
+  /* flex layout is owned by .overflow-menu-bar */
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+/* Overflow menu bar – wraps all toolbar items */
+.overflow-menu-bar {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-shrink: 0;
+  position: relative;
+}
+
+/* Hidden measurement row: all items rendered here for width sampling */
+.overflow-measure-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  pointer-events: none;
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+/* Wrapper around each visible toolbar item */
+.overflow-menu-item {
+  display: flex;
+  align-items: center;
+}
+
+/* Red dot on sidebar toggle when overflow items are hidden */
+.sidebar-toggle-dot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  background: #f44336;
+  border-radius: 50%;
+  border: 1.5px solid #2e7d32; /* match header background */
+}
+
+/* ── Sidebar overflow panel ──────────────────────────────── */
+.sidebar-overflow-panel {
+  padding: 10px 16px;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidebar-overflow-item {
+  display: flex;
+  align-items: center;
+}
+
+/* Button color overrides for light sidebar background */
+.sidebar-overflow-panel .draw-btn {
+  color: #1b5e20;
+  border-color: #4caf50;
+  background: white;
+}
+.sidebar-overflow-panel .draw-btn:hover {
+  background: #e8f5e9;
+}
+.sidebar-overflow-panel .draw-btn.active {
+  background: #c8e6c9;
+  border-color: #2e7d32;
+  color: #1b5e20;
+}
+.sidebar-overflow-panel .draw-action-btn {
+  background: white;
+  border-color: #a5d6a7;
+  color: #1b5e20;
+}
+.sidebar-overflow-panel .draw-action-btn:hover {
+  background: #e8f5e9;
+}
+.sidebar-overflow-panel .color-swatches {
+  flex-wrap: wrap;
+}
+.sidebar-overflow-panel .width-btns {
+  gap: 4px;
 }
 
 .draw-btn {
@@ -88,11 +169,6 @@
   border-color: white;
 }
 
-.draw-options {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
 
 .color-swatches {
   display: flex;
@@ -165,6 +241,7 @@
 }
 
 .sidebar-toggle {
+  position: relative;
   background: transparent;
   border: none;
   color: white;
