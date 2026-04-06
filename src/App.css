@@ -520,3 +520,9 @@
 .share-modal-close-btn:hover {
   background: #f0f0f0;
 }
+
+.share-modal-copy-error {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #c62828;
+}

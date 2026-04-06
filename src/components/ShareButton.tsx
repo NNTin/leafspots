@@ -11,6 +11,10 @@ export default function ShareButton({ getShareUrl }: Props) {
   const [fallbackOpen, setFallbackOpen] = useState(false);
   const [fallbackUrl, setFallbackUrl] = useState('');
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
+  const urlInputRef = useCallback((el: HTMLInputElement | null) => {
+    if (el) el.select();
+  }, []);
 
   const handleShare = useCallback(async () => {
     const url = getShareUrl();
@@ -34,15 +38,17 @@ export default function ShareButton({ getShareUrl }: Props) {
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(fallbackUrl).then(() => {
       setCopied(true);
+      setCopyError(false);
       setTimeout(() => setCopied(false), 2000);
     }).catch(() => {
-      window.history.replaceState(null, '', fallbackUrl);
+      setCopyError(true);
     });
   }, [fallbackUrl]);
 
   const handleClose = useCallback(() => {
     setFallbackOpen(false);
     setCopied(false);
+    setCopyError(false);
   }, []);
 
   return (
@@ -58,6 +64,7 @@ export default function ShareButton({ getShareUrl }: Props) {
             <p>Copy the link below to share your map:</p>
             <div className="share-modal-url-row">
               <input
+                ref={urlInputRef}
                 className="share-modal-url-input"
                 type="text"
                 readOnly
@@ -69,6 +76,11 @@ export default function ShareButton({ getShareUrl }: Props) {
                 {copied ? '✓ Copied' : 'Copy'}
               </button>
             </div>
+            {copyError && (
+              <p className="share-modal-copy-error">
+                Could not copy automatically — please select the URL above and copy it manually.
+              </p>
+            )}
             <button className="share-modal-close-btn" onClick={handleClose} aria-label="Close share dialog">
               Close
             </button>
