@@ -9,6 +9,12 @@ interface Props {
   strokeWidth: number;
   onColorChange: (color: string) => void;
   onWidthChange: (width: number) => void;
+  pinMode: boolean;
+  hasPins: boolean;
+  pinColor: string;
+  onTogglePinMode: () => void;
+  onClearPins: () => void;
+  onPinColorChange: (color: string) => void;
 }
 
 const PRESET_COLORS = ['#e53935', '#1e88e5', '#43a047', '#f4511e', '#000000', '#ffffff'];
@@ -25,6 +31,12 @@ export default function DrawingControls({
   strokeWidth,
   onColorChange,
   onWidthChange,
+  pinMode,
+  hasPins,
+  pinColor,
+  onTogglePinMode,
+  onClearPins,
+  onPinColorChange,
 }: Props) {
   return (
     <div className="drawing-controls">
@@ -83,6 +95,37 @@ export default function DrawingControls({
             🗑
           </button>
         </>
+      )}
+
+      <button
+        className={`draw-btn${pinMode ? ' active' : ''}`}
+        onClick={onTogglePinMode}
+        title={pinMode ? 'Exit Pin Mode — click to stop placing pins' : 'Enter Pin Mode — click map to place pins'}
+      >
+        {pinMode ? '📍 Pinning…' : '📍 Pin'}
+      </button>
+
+      {pinMode && (
+        <div className="draw-options">
+          <div className="color-swatches">
+            {PRESET_COLORS.map((c) => (
+              <button
+                key={c}
+                className={`color-swatch${pinColor === c ? ' selected' : ''}`}
+                style={{ background: c }}
+                onClick={() => onPinColorChange(c)}
+                title={c}
+                aria-label={`Pin color ${c}`}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {hasPins && (
+        <button className="draw-action-btn" onClick={onClearPins} title="Clear all pins" aria-label="Clear all pins">
+          🗑
+        </button>
       )}
 
       <button className="draw-action-btn" onClick={onExport} title="Copy shareable link to clipboard" aria-label="Share map">
