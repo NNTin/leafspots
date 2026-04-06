@@ -1,73 +1,65 @@
-# React + TypeScript + Vite
+# Leafspots 🍃🍺
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Leafspots is a map-first React + Vite SPA for drawing, pinning, and sharing places through a URL.
 
-Currently, two official plugins are available:
+## Installation & Running Locally
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+git clone <repository-url>
+cd leafspots
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Then open the local URL shown by Vite (usually `http://localhost:5173`).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Live Link
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+https://nntin.xyz/leafspots/
+
+## Privacy
+
+- Leafspots is a Single Page Application (SPA) with no backend.
+- No user data is collected or stored on a server.
+- Location and map state are encoded directly into the URL query parameter (`?state=`).
+- Only people with the shared link can access that encoded location/map information.
+- You are encouraged to fork this project and adapt it to your own needs.
+
+## Architecture Diagram
+
+The diagram below mirrors the implementation naming in the codebase (`LocationInput`, `ShareButton`, `getShareUrl`, `buildShareUrl`, `encodeMapState`, and `loadStateFromUrl`).
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant LocationInput
+    participant App
+    participant URLState as urlState.ts
+    participant ShareButton
+    actor LinkReceiver as Viewer with Link
+
+    User->>LocationInput: Enter/select location
+    LocationInput->>App: onLocationChange(setUserLocation)
+
+    User->>ShareButton: Click "Share"
+    ShareButton->>App: getShareUrl()
+    App->>URLState: buildShareUrl(state: MapState)
+    URLState->>URLState: encodeMapState(state)
+    URLState-->>App: Full URL with ?state=<encoded>
+    App-->>ShareButton: return URL
+
+    alt Web Share API available
+        ShareButton->>User: navigator.share({ url })
+    else Fallback copy flow
+        ShareButton->>User: Show URL + copy button
+    end
+
+    User->>LinkReceiver: Share URL
+    LinkReceiver->>App: Open shared link
+    App->>URLState: loadStateFromUrl()
+    URLState->>URLState: decodeMapState(encoded)
+    URLState-->>App: Restored MapState (center/zoom/pin/pins/strokes)
+    App-->>LinkReceiver: Render shared location/map state
 ```
+
+<p align="center"><small>Built with ♥ in preparation for Bergkirchweih, my hometown for the years 2016–2024.</small></p>
