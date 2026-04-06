@@ -7,6 +7,7 @@ import Filters from './components/Filters';
 import LocationInput from './components/LocationInput';
 import DrawingControls from './components/DrawingControls';
 import { useDrawing } from './hooks/useDrawing';
+import { usePins } from './hooks/usePins';
 import { loadStateFromUrl, buildShareUrl } from './utils/urlState';
 import type { MapState } from './utils/urlState';
 import './App.css';
@@ -26,6 +27,8 @@ function App() {
   const [strokeColor, setStrokeColor] = useState('#e53935');
   const [strokeWidth, setStrokeWidth] = useState(4);
   const [shareMessage, setShareMessage] = useState('');
+  const [pinMode, setPinMode] = useState(false);
+  const [pinColor, setPinColor] = useState('#e53935');
 
   // Track current map view via refs (no re-render needed)
   const mapCenterRef = useRef<[number, number]>(urlState?.center ?? BAVARIA_CENTER);
@@ -33,6 +36,21 @@ function App() {
 
   const { drawMode, strokes, toggleDrawMode, addStroke, undoLastStroke, clearStrokes } =
     useDrawing(urlState?.strokes ?? []);
+
+  const { pins, addPin, movePin, clearPins } = usePins(
+    () => urlState?.pins?.map(([lat, lng, color]) => ({ id: crypto.randomUUID(), lat, lng, color })) ?? [],
+  );
+
+  // Draw mode and pin mode are mutually exclusive
+  const handleToggleDrawMode = useCallback(() => {
+    if (pinMode) setPinMode(false);
+    toggleDrawMode();
+  }, [pinMode, toggleDrawMode]);
+
+  const handleTogglePinMode = useCallback(() => {
+    if (drawMode) toggleDrawMode();
+    setPinMode((prev) => !prev);
+  }, [drawMode, toggleDrawMode]);
 
   const handleViewChange = useCallback((center: [number, number], zoom: number) => {
     mapCenterRef.current = center;
@@ -45,6 +63,7 @@ function App() {
       zoom: mapZoomRef.current,
       strokes,
       pin: userLocation ? [userLocation.lat, userLocation.lng] : null,
+      pins: pins.map(({ lat, lng, color }) => [lat, lng, color]),
     };
     const url = buildShareUrl(state);
     navigator.clipboard.writeText(url).then(() => {
@@ -56,7 +75,7 @@ function App() {
       setShareMessage('URL updated — copy from address bar');
       setTimeout(() => setShareMessage(''), 4000);
     });
-  }, [strokes, userLocation]);
+  }, [strokes, userLocation, pins]);
 
   const visibleSpots = allSpots.filter((s) => activeCategories.has(s.category));
 
@@ -77,7 +96,7 @@ function App() {
         <DrawingControls
           drawMode={drawMode}
           hasStrokes={strokes.length > 0}
-          onToggleDrawMode={toggleDrawMode}
+          onToggleDrawMode={handleToggleDrawMode}
           onUndo={undoLastStroke}
           onClear={clearStrokes}
           onExport={handleExport}
@@ -85,6 +104,12 @@ function App() {
           strokeWidth={strokeWidth}
           onColorChange={setStrokeColor}
           onWidthChange={setStrokeWidth}
+          pinMode={pinMode}
+          hasPins={pins.length > 0}
+          pinColor={pinColor}
+          onTogglePinMode={handleTogglePinMode}
+          onClearPins={clearPins}
+          onPinColorChange={setPinColor}
         />
 
         <div className="header-right">
@@ -118,6 +143,11 @@ function App() {
             onStrokeComplete={addStroke}
             onViewChange={handleViewChange}
             sidebarOpen={sidebarOpen}
+            pins={pins}
+            pinMode={pinMode}
+            pinColor={pinColor}
+            onPinAdd={addPin}
+            onPinMove={movePin}
           />
         </main>
       </div>

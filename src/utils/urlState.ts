@@ -7,6 +7,7 @@ export interface MapState {
   zoom: number;
   strokes: Stroke[];
   pin?: [number, number] | null;
+  pins?: [number, number, string][];
 }
 
 // Prefix used to distinguish LZ-compressed payloads from legacy plain base64.
@@ -28,6 +29,7 @@ export function encodeMapState(state: MapState): string {
     pin: state.pin
       ? [roundCoord(state.pin[0]), roundCoord(state.pin[1])]
       : state.pin,
+    pins: state.pins?.map(([lat, lng, color]) => [roundCoord(lat), roundCoord(lng), color]),
     strokes: state.strokes.map((s) => ({
       ...s,
       points: simplifyStroke(
