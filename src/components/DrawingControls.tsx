@@ -18,6 +18,7 @@ interface Props {
   onTogglePinMode: () => void;
   onClearPins: () => void;
   onPinColorChange: (color: string) => void;
+  onOverflowChange?: (items: MenuItem[]) => void;
 }
 
 const PRESET_COLORS = ['#e53935', '#1e88e5', '#43a047', '#f4511e', '#000000', '#ffffff'];
@@ -40,6 +41,7 @@ export default function DrawingControls({
   onTogglePinMode,
   onClearPins,
   onPinColorChange,
+  onOverflowChange,
 }: Props) {
   const items: MenuItem[] = [];
 
@@ -186,5 +188,5 @@ export default function DrawingControls({
     ),
   });
 
-  return <OverflowMenuBar items={items} className="drawing-controls" />;
+  return <OverflowMenuBar items={items} onOverflowChange={onOverflowChange} className="drawing-controls" />;
 }

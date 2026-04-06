@@ -8,27 +8,17 @@ export interface MenuItem {
 
 interface Props {
   items: MenuItem[];
+  onOverflowChange?: (overflowItems: MenuItem[]) => void;
   className?: string;
 }
 
 const GAP = 6; // must match CSS gap value
-const HAMBURGER_FALLBACK_WIDTH = 38; // used when hamburger ref isn't yet measured
 
-export default function OverflowMenuBar({ items, className }: Props) {
+export default function OverflowMenuBar({ items, onOverflowChange, className }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
-  const hamburgerRef = useRef<HTMLButtonElement>(null);
 
   const [overflowStart, setOverflowStart] = useState<number>(items.length);
-  // Track the itemIds snapshot at the time the dropdown was opened.
-  // Comparing to the current itemIds lets the dropdown close automatically
-  // when the item list changes (e.g. tool mode switches), without calling
-  // setState inside an effect.
-  const [dropdownAnchorIds, setDropdownAnchorIds] = useState<string | null>(null);
-
-  const itemIds = useMemo(() => items.map((i) => i.id).join('\0'), [items]);
-  const hasOverflow = overflowStart < items.length;
-  const dropdownOpen = dropdownAnchorIds === itemIds && hasOverflow;
 
   const recalculate = useCallback(() => {
     const container = containerRef.current;
@@ -40,23 +30,18 @@ export default function OverflowMenuBar({ items, className }: Props) {
     if (children.length === 0) return;
 
     const widths = children.map((el) => el.offsetWidth);
-    const totalNoHamburger = widths.reduce((s, w, i) => s + w + (i > 0 ? GAP : 0), 0);
+    const totalWidth = widths.reduce((s, w, i) => s + w + (i > 0 ? GAP : 0), 0);
 
-    if (totalNoHamburger <= available) {
+    if (totalWidth <= available) {
       setOverflowStart(children.length);
       return;
     }
-
-    // Reserve space for the hamburger button
-    const hb = hamburgerRef.current;
-    const hbWidth = hb ? hb.offsetWidth + GAP : HAMBURGER_FALLBACK_WIDTH;
-    const effective = available - hbWidth;
 
     let used = 0;
     let fitCount = 0;
     for (let i = 0; i < widths.length; i++) {
       const needed = widths[i] + (i > 0 ? GAP : 0);
-      if (used + needed <= effective) {
+      if (used + needed <= available) {
         used += needed;
         fitCount++;
       } else {
@@ -77,24 +62,17 @@ export default function OverflowMenuBar({ items, className }: Props) {
   }, [recalculate]);
 
   // Recalculate whenever the item list changes
+  const itemIds = useMemo(() => items.map((i) => i.id).join('\0'), [items]);
   useEffect(() => {
     recalculate();
   }, [itemIds, recalculate]);
 
-  // Close dropdown when clicking outside
+  // Report overflow items to parent whenever overflowStart or items change
   useEffect(() => {
-    if (!dropdownOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (!containerRef.current?.contains(e.target as Node)) {
-        setDropdownAnchorIds(null);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [dropdownOpen]);
+    onOverflowChange?.(items.slice(overflowStart));
+  }, [overflowStart, items, onOverflowChange]);
 
   const visibleItems = items.slice(0, overflowStart);
-  const overflowItems = items.slice(overflowStart);
 
   const containerClass = ['overflow-menu-bar', className].filter(Boolean).join(' ');
 
@@ -113,31 +91,6 @@ export default function OverflowMenuBar({ items, className }: Props) {
           {item.node}
         </div>
       ))}
-
-      {/* Hamburger – always in DOM so its width can be measured, visually hidden when unneeded */}
-      <button
-        ref={hamburgerRef}
-        className={`overflow-hamburger${hasOverflow ? '' : ' overflow-hamburger--hidden'}`}
-        onClick={() => setDropdownAnchorIds((prev) => (prev === itemIds ? null : itemIds))}
-        aria-label="More actions"
-        aria-expanded={dropdownOpen}
-        aria-haspopup="true"
-        tabIndex={hasOverflow ? 0 : -1}
-      >
-        ☰
-        {hasOverflow && <span className="overflow-dot" aria-hidden="true" />}
-      </button>
-
-      {/* Overflow dropdown */}
-      {hasOverflow && dropdownOpen && (
-        <div className="overflow-dropdown" role="menu">
-          {overflowItems.map((item) => (
-            <div key={item.id} className="overflow-dropdown-item" role="menuitem">
-              {item.node}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

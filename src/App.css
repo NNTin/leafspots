@@ -93,37 +93,11 @@
   align-items: center;
 }
 
-/* Hamburger button */
-.overflow-hamburger {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  background: rgba(255,255,255,0.1);
-  border: 1.5px solid rgba(255,255,255,0.4);
-  color: white;
-  font-size: 1rem;
-  cursor: pointer;
-  padding: 0;
-  transition: background 0.15s;
-}
-.overflow-hamburger:hover {
-  background: rgba(255,255,255,0.25);
-}
-.overflow-hamburger--hidden {
-  visibility: hidden;
-  pointer-events: none;
-}
-
-/* Red dot indicator */
-.overflow-dot {
+/* Red dot on sidebar toggle when overflow items are hidden */
+.sidebar-toggle-dot {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: 0;
+  right: 0;
   width: 8px;
   height: 8px;
   background: #f44336;
@@ -131,37 +105,47 @@
   border: 1.5px solid #2e7d32; /* match header background */
 }
 
-/* Overflow dropdown panel */
-.overflow-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  background: #2e7d32;
-  border: 1px solid rgba(255,255,255,0.3);
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
-  padding: 8px;
+/* ── Sidebar overflow panel ──────────────────────────────── */
+.sidebar-overflow-panel {
+  padding: 10px 16px;
+  border-bottom: 1px solid #ddd;
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
-  z-index: 1100;
-  min-width: 160px;
 }
 
-/* Wrapper for each item inside the dropdown */
-.overflow-dropdown-item {
+.sidebar-overflow-item {
   display: flex;
   align-items: center;
 }
-.overflow-dropdown-item .draw-btn,
-.overflow-dropdown-item .draw-action-btn {
-  width: 100%;
-  justify-content: flex-start;
+
+/* Button color overrides for light sidebar background */
+.sidebar-overflow-panel .draw-btn {
+  color: #1b5e20;
+  border-color: #4caf50;
+  background: white;
 }
-.overflow-dropdown-item .color-swatches {
+.sidebar-overflow-panel .draw-btn:hover {
+  background: #e8f5e9;
+}
+.sidebar-overflow-panel .draw-btn.active {
+  background: #c8e6c9;
+  border-color: #2e7d32;
+  color: #1b5e20;
+}
+.sidebar-overflow-panel .draw-action-btn {
+  background: white;
+  border-color: #a5d6a7;
+  color: #1b5e20;
+}
+.sidebar-overflow-panel .draw-action-btn:hover {
+  background: #e8f5e9;
+}
+.sidebar-overflow-panel .color-swatches {
   flex-wrap: wrap;
 }
-.overflow-dropdown-item .width-btns {
+.sidebar-overflow-panel .width-btns {
   gap: 4px;
 }
 
@@ -257,6 +241,7 @@
 }
 
 .sidebar-toggle {
+  position: relative;
   background: transparent;
   border: none;
   color: white;
