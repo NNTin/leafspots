@@ -38,7 +38,7 @@ function App() {
     useDrawing(urlState?.strokes ?? []);
 
   const { pins, addPin, movePin, clearPins } = usePins(
-    urlState?.pins?.map(([lat, lng, color]) => ({ id: crypto.randomUUID(), lat, lng, color })) ?? [],
+    () => urlState?.pins?.map(([lat, lng, color]) => ({ id: crypto.randomUUID(), lat, lng, color })) ?? [],
   );
 
   // Draw mode and pin mode are mutually exclusive

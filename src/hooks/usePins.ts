@@ -15,7 +15,7 @@ interface UsePinsReturn {
   setPins: (pins: CustomPin[]) => void;
 }
 
-export function usePins(initialPins: CustomPin[] = []): UsePinsReturn {
+export function usePins(initialPins: CustomPin[] | (() => CustomPin[]) = []): UsePinsReturn {
   const [pins, setPins] = useState<CustomPin[]>(initialPins);
 
   const addPin = useCallback((lat: number, lng: number, color: string) => {

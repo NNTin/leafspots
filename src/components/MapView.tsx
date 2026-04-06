@@ -85,17 +85,23 @@ function MapCursorHandler({ pinMode }: { pinMode: boolean }) {
   return null;
 }
 
+/** Validates that a color is a safe CSS hex color; falls back to a neutral grey. */
+function sanitizeColor(color: string): string {
+  return /^#[0-9a-fA-F]{3,8}$/.test(color) ? color : '#808080';
+}
+
 /** A draggable, colored circular marker for a custom pin. */
 function PinMarker({ pin, onMove }: { pin: CustomPin; onMove: (id: string, lat: number, lng: number) => void }) {
+  const safeColor = sanitizeColor(pin.color);
   const icon = useMemo(
     () =>
       L.divIcon({
-        html: `<div style="width:16px;height:16px;border-radius:50%;background:${pin.color};border:2.5px solid rgba(0,0,0,0.45);box-shadow:0 1px 4px rgba(0,0,0,0.35);"></div>`,
+        html: `<div style="width:16px;height:16px;border-radius:50%;background:${safeColor};border:2.5px solid rgba(0,0,0,0.45);box-shadow:0 1px 4px rgba(0,0,0,0.35);"></div>`,
         className: '',
         iconSize: [16, 16],
         iconAnchor: [8, 8],
       }),
-    [pin.color],
+    [safeColor],
   );
 
   return (
