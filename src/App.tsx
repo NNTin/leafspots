@@ -4,6 +4,7 @@ import MapView from './components/MapView';
 import LocationInput from './components/LocationInput';
 import DrawingControls from './components/DrawingControls';
 import ShareButton from './components/ShareButton';
+import SidebarSocialIcons from './components/SidebarSocialIcons';
 import type { MenuItem } from './components/OverflowMenuBar';
 import { useDrawing } from './hooks/useDrawing';
 import { usePins } from './hooks/usePins';
@@ -224,6 +225,7 @@ function App() {
             <div className="share-panel">
               <ShareButton getShareUrl={getShareUrl} />
             </div>
+            <SidebarSocialIcons />
           </aside>
         )}
         <main className="map-container">
