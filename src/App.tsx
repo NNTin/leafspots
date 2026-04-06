@@ -4,9 +4,11 @@ import MapView from './components/MapView';
 import LocationInput from './components/LocationInput';
 import DrawingControls from './components/DrawingControls';
 import ShareButton from './components/ShareButton';
+import SidebarSocialIcons from './components/SidebarSocialIcons';
 import type { MenuItem } from './components/OverflowMenuBar';
 import { useDrawing } from './hooks/useDrawing';
 import { usePins } from './hooks/usePins';
+import { useOrientation } from './hooks/useOrientation';
 import { loadStateFromUrl, buildShareUrl } from './utils/urlState';
 import type { MapState } from './utils/urlState';
 import './App.css';
@@ -22,6 +24,7 @@ function App() {
     urlState?.pin ? { lat: urlState.pin[0], lng: urlState.pin[1] } : null,
   );
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
+  const orientation = useOrientation();
   const [strokeColor, setStrokeColor] = useState('#e53935');
   const [strokeWidth, setStrokeWidth] = useState(4);
   const [shareMessage, setShareMessage] = useState('');
@@ -224,6 +227,13 @@ function App() {
             <div className="share-panel">
               <ShareButton getShareUrl={getShareUrl} />
             </div>
+            {orientation === 'portrait' ? (
+              <div className="sidebar-rotate-message" role="status">
+                🔄 Rotate your phone to horizontal mode for a better experience
+              </div>
+            ) : (
+              <SidebarSocialIcons />
+            )}
           </aside>
         )}
         <main className="map-container">
