@@ -84,6 +84,28 @@ export default function DrawingCanvas({
     setCurrentPoints(next);
   }
 
+  function handleTouchStart(e: React.TouchEvent<SVGSVGElement>) {
+    if (!drawMode) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+    e.preventDefault();
+    isDrawingRef.current = true;
+    const point = getPoint(touch.clientX, touch.clientY);
+    currentPointsRef.current = [point];
+    setCurrentPoints([point]);
+  }
+
+  function handleTouchMove(e: React.TouchEvent<SVGSVGElement>) {
+    if (!isDrawingRef.current) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+    e.preventDefault();
+    const point = getPoint(touch.clientX, touch.clientY);
+    const next = [...currentPointsRef.current, point];
+    currentPointsRef.current = next;
+    setCurrentPoints(next);
+  }
+
   function finishStroke() {
     if (!isDrawingRef.current) return;
     isDrawingRef.current = false;
@@ -129,6 +151,9 @@ export default function DrawingCanvas({
       onMouseMove={handleMouseMove}
       onMouseUp={finishStroke}
       onMouseLeave={finishStroke}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={finishStroke}
     >
       {strokes.map((stroke) => (
         <path
