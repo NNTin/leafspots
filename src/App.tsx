@@ -7,6 +7,7 @@ import Filters from './components/Filters';
 import LocationInput from './components/LocationInput';
 import DrawingControls from './components/DrawingControls';
 import ShareButton from './components/ShareButton';
+import type { MenuItem } from './components/OverflowMenuBar';
 import { useDrawing } from './hooks/useDrawing';
 import { usePins } from './hooks/usePins';
 import { loadStateFromUrl, buildShareUrl } from './utils/urlState';
@@ -30,6 +31,7 @@ function App() {
   const [shareMessage, setShareMessage] = useState('');
   const [pinMode, setPinMode] = useState(false);
   const [pinColor, setPinColor] = useState('#e53935');
+  const [overflowItems, setOverflowItems] = useState<MenuItem[]>([]);
 
   // Track current map view via refs (no re-render needed)
   const mapCenterRef = useRef<[number, number]>(urlState?.center ?? BAVARIA_CENTER);
@@ -101,6 +103,9 @@ function App() {
             aria-label="Toggle sidebar"
           >
             ☰
+            {overflowItems.length > 0 && !sidebarOpen && (
+              <span className="sidebar-toggle-dot" aria-hidden="true" />
+            )}
           </button>
           <h1>🍃 Leafspots</h1>
         </div>
@@ -122,16 +127,28 @@ function App() {
           onTogglePinMode={handleTogglePinMode}
           onClearPins={clearPins}
           onPinColorChange={setPinColor}
+          onOverflowChange={setOverflowItems}
         />
-
-        <div className="header-right">
-          {shareMessage && <span className="copy-success">{shareMessage}</span>}
-        </div>
       </header>
+
+      {shareMessage && (
+        <div className="toast-notification" role="status" aria-live="polite">
+          {shareMessage}
+        </div>
+      )}
 
       <div className="app-body">
         {sidebarOpen && (
           <aside className="sidebar">
+            {overflowItems.length > 0 && (
+              <div className="sidebar-overflow-panel">
+                {overflowItems.map((item) => (
+                  <div key={item.id} className="sidebar-overflow-item">
+                    {item.node}
+                  </div>
+                ))}
+              </div>
+            )}
             <LocationInput
               userLocation={userLocation}
               onLocationChange={setUserLocation}
