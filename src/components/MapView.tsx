@@ -1,4 +1,5 @@
-import { MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
+import { useEffect } from 'react';
+import { MapContainer, TileLayer, CircleMarker, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Spot } from '../data/spots';
 import type { Coordinates } from '../utils/distance';
@@ -18,6 +19,7 @@ interface MapViewProps {
   strokeWidth: number;
   onStrokeComplete: (stroke: Stroke) => void;
   onViewChange: (center: [number, number], zoom: number) => void;
+  sidebarOpen: boolean;
 }
 
 // Bavaria center
@@ -42,6 +44,20 @@ function MapStateTracker({
   return null;
 }
 
+// Radius (px) of the user-location pin circle marker
+const PIN_RADIUS = 10;
+
+/** Calls invalidateSize whenever sidebarOpen toggles so Leaflet reflows correctly. */
+function MapSizeInvalidator({ sidebarOpen }: { sidebarOpen: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    // Delay lets CSS transitions finish before reflowing
+    const id = setTimeout(() => map.invalidateSize(), 200);
+    return () => clearTimeout(id);
+  }, [sidebarOpen, map]);
+  return null;
+}
+
 export default function MapView({
   spots,
   userLocation,
@@ -53,6 +69,7 @@ export default function MapView({
   strokeWidth,
   onStrokeComplete,
   onViewChange,
+  sidebarOpen,
 }: MapViewProps) {
   return (
     <MapContainer
@@ -72,7 +89,15 @@ export default function MapView({
             : undefined;
         return <SpotMarker key={spot.id} spot={spot} distanceKm={distanceKm} />;
       })}
+      {userLocation && (
+        <CircleMarker
+          center={[userLocation.lat, userLocation.lng]}
+          radius={PIN_RADIUS}
+          pathOptions={{ color: '#1565c0', fillColor: '#1e88e5', fillOpacity: 0.9, weight: 2 }}
+        />
+      )}
       <MapStateTracker onViewChange={onViewChange} />
+      <MapSizeInvalidator sidebarOpen={sidebarOpen} />
       <DrawingCanvas
         strokes={strokes}
         drawMode={drawMode}
