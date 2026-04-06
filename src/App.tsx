@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
 import { spots as allSpots } from './data/spots';
 import type { Category } from './data/spots';
 import type { Coordinates } from './utils/distance';
@@ -31,6 +31,11 @@ function App() {
   const [pinMode, setPinMode] = useState(false);
   const [pinColor, setPinColor] = useState('#e53935');
   const [overflowItems, setOverflowItems] = useState<MenuItem[]>([]);
+  const [showFullTitle, setShowFullTitle] = useState(true);
+
+  const headerRef = useRef<HTMLElement>(null);
+  const headerLeftRef = useRef<HTMLDivElement>(null);
+  const fullTitleMeasureRef = useRef<HTMLSpanElement>(null);
 
   // Track current map view via refs (no re-render needed)
   const mapCenterRef = useRef<[number, number]>(urlState?.center ?? BAVARIA_CENTER);
@@ -79,12 +84,77 @@ function App() {
     });
   }, [strokes, userLocation, pins]);
 
+  const recalculateTitle = useCallback(() => {
+    const headerEl = headerRef.current;
+    const headerLeftEl = headerLeftRef.current;
+    const measureEl = fullTitleMeasureRef.current;
+
+    if (!headerEl || !headerLeftEl || !measureEl) return;
+
+    if (overflowItems.length > 0) {
+      setShowFullTitle(false);
+      return;
+    }
+
+    const headerStyles = getComputedStyle(headerEl);
+    const headerGap = parseFloat(headerStyles.columnGap || headerStyles.gap || '0') || 0;
+    const headerPaddingX =
+      (parseFloat(headerStyles.paddingLeft || '0') || 0) +
+      (parseFloat(headerStyles.paddingRight || '0') || 0);
+    const availableWidth = headerEl.clientWidth - headerPaddingX;
+
+    const leftStyles = getComputedStyle(headerLeftEl);
+    const leftGap = parseFloat(leftStyles.columnGap || leftStyles.gap || '0') || 0;
+
+    const toggleEl = headerLeftEl.querySelector('.sidebar-toggle') as HTMLElement | null;
+    const overflowBarEl = headerLeftEl.querySelector('.overflow-menu-bar') as HTMLElement | null;
+
+    const toggleWidth = toggleEl?.offsetWidth ?? 0;
+
+    let visibleToolbarWidth = 0;
+    if (overflowBarEl) {
+      const barStyles = getComputedStyle(overflowBarEl);
+      const barGap = parseFloat(barStyles.columnGap || barStyles.gap || '0') || 0;
+      const itemEls = Array.from(overflowBarEl.children).filter((child) =>
+        (child as HTMLElement).classList.contains('overflow-menu-item'),
+      ) as HTMLElement[];
+      visibleToolbarWidth =
+        itemEls.reduce((sum, item) => sum + item.offsetWidth, 0) +
+        Math.max(0, itemEls.length - 1) * barGap;
+    }
+
+    const leftWidth = toggleWidth + (visibleToolbarWidth > 0 ? leftGap : 0) + visibleToolbarWidth;
+    const fullTitleWidth = measureEl.offsetWidth;
+
+    setShowFullTitle(leftWidth + headerGap + fullTitleWidth <= availableWidth - 2);
+  }, [overflowItems.length]);
+
+  useLayoutEffect(() => {
+    recalculateTitle();
+  }, [recalculateTitle]);
+
+  useEffect(() => {
+    const headerEl = headerRef.current;
+    const headerLeftEl = headerLeftRef.current;
+
+    if (!headerEl || !headerLeftEl) return;
+
+    const observer = new ResizeObserver(() => {
+      recalculateTitle();
+    });
+
+    observer.observe(headerEl);
+    observer.observe(headerLeftEl);
+
+    return () => observer.disconnect();
+  }, [recalculateTitle]);
+
   const visibleSpots = allSpots.filter((s) => activeCategories.has(s.category));
 
   return (
     <div className="app">
-      <header className="app-header">
-        <div className="header-left">
+      <header ref={headerRef} className="app-header">
+        <div ref={headerLeftRef} className="header-left">
           <button
             className="sidebar-toggle"
             onClick={() => setSidebarOpen((o) => !o)}
@@ -117,7 +187,10 @@ function App() {
           />
         </div>
 
-        <h1>🍃 Leafspots</h1>
+        <h1>{showFullTitle ? '🍃 Leafspots' : '🍃'}</h1>
+        <span ref={fullTitleMeasureRef} className="title-measure-full" aria-hidden="true">
+          🍃 Leafspots
+        </span>
       </header>
 
       {shareMessage && (
