@@ -8,6 +8,8 @@ interface Props {
 
 const QR_SIZE = 240;
 const LOGO_TEXT = '🍃🍺';
+const LOGO_BADGE_RADIUS = 20;
+const LOGO_FONT_SIZE = 22;
 
 export default function QRModal({ url, onClose }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -34,9 +36,9 @@ export default function QRModal({ url, onClose }: Props) {
     const cy = out.height / 2;
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.arc(cx, cy, 20, 0, Math.PI * 2);
+    ctx.arc(cx, cy, LOGO_BADGE_RADIUS, 0, Math.PI * 2);
     ctx.fill();
-    ctx.font = '22px serif';
+    ctx.font = `${LOGO_FONT_SIZE}px serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(LOGO_TEXT, cx, cy);
@@ -51,6 +53,8 @@ export default function QRModal({ url, onClose }: Props) {
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {
+      window.prompt('Copy this link:', url);
     });
   };
 
@@ -66,6 +70,7 @@ export default function QRModal({ url, onClose }: Props) {
       role="dialog"
       aria-modal="true"
       aria-label="Share QR code"
+      tabIndex={-1}
     >
       <div className="qr-modal" onClick={(e) => e.stopPropagation()} role="document">
         <button className="qr-close" onClick={onClose} aria-label="Close">
