@@ -69,9 +69,7 @@ type CompactV2 = [number, number, number, [number, number] | null, CompactStroke
 
 function toCompactV2(state: MapState): CompactV2 {
   const strokes: CompactStroke[] = state.strokes.map((s) => {
-    const simplified = simplifyStroke(
-      s.points.map(([lat, lng]) => [Math.round(lat * 1e5) / 1e5, Math.round(lng * 1e5) / 1e5]),
-    );
+    const simplified = simplifyStroke(s.points);
     const flat: number[] = [];
     let pLat = 0, pLng = 0;
     for (let i = 0; i < simplified.length; i++) {
