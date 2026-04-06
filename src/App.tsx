@@ -95,28 +95,29 @@ function App() {
               <span className="sidebar-toggle-dot" aria-hidden="true" />
             )}
           </button>
-          <h1>🍃 Leafspots</h1>
+
+          <DrawingControls
+            drawMode={drawMode}
+            hasStrokes={strokes.length > 0}
+            onToggleDrawMode={handleToggleDrawMode}
+            onUndo={undoLastStroke}
+            onClear={clearStrokes}
+            onExport={handleExport}
+            strokeColor={strokeColor}
+            strokeWidth={strokeWidth}
+            onColorChange={setStrokeColor}
+            onWidthChange={setStrokeWidth}
+            pinMode={pinMode}
+            hasPins={pins.length > 0}
+            pinColor={pinColor}
+            onTogglePinMode={handleTogglePinMode}
+            onClearPins={clearPins}
+            onPinColorChange={setPinColor}
+            onOverflowChange={setOverflowItems}
+          />
         </div>
 
-        <DrawingControls
-          drawMode={drawMode}
-          hasStrokes={strokes.length > 0}
-          onToggleDrawMode={handleToggleDrawMode}
-          onUndo={undoLastStroke}
-          onClear={clearStrokes}
-          onExport={handleExport}
-          strokeColor={strokeColor}
-          strokeWidth={strokeWidth}
-          onColorChange={setStrokeColor}
-          onWidthChange={setStrokeWidth}
-          pinMode={pinMode}
-          hasPins={pins.length > 0}
-          pinColor={pinColor}
-          onTogglePinMode={handleTogglePinMode}
-          onClearPins={clearPins}
-          onPinColorChange={setPinColor}
-          onOverflowChange={setOverflowItems}
-        />
+        <h1>🍃 Leafspots</h1>
       </header>
 
       {shareMessage && (
