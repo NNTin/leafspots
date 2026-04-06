@@ -6,6 +6,7 @@ import MapView from './components/MapView';
 import Filters from './components/Filters';
 import LocationInput from './components/LocationInput';
 import DrawingControls from './components/DrawingControls';
+import QRModal from './components/QRModal';
 import { useDrawing } from './hooks/useDrawing';
 import { loadStateFromUrl, buildShareUrl } from './utils/urlState';
 import type { MapState } from './utils/urlState';
@@ -25,7 +26,7 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
   const [strokeColor, setStrokeColor] = useState('#e53935');
   const [strokeWidth, setStrokeWidth] = useState(4);
-  const [shareMessage, setShareMessage] = useState('');
+  const [qrUrl, setQrUrl] = useState<string | null>(null);
 
   // Track current map view via refs (no re-render needed)
   const mapCenterRef = useRef<[number, number]>(urlState?.center ?? BAVARIA_CENTER);
@@ -46,16 +47,7 @@ function App() {
       strokes,
       pin: userLocation ? [userLocation.lat, userLocation.lng] : null,
     };
-    const url = buildShareUrl(state);
-    navigator.clipboard.writeText(url).then(() => {
-      setShareMessage('✓ Link copied!');
-      setTimeout(() => setShareMessage(''), 2000);
-    }).catch(() => {
-      // Clipboard unavailable — update address bar so user can copy manually
-      window.history.replaceState(null, '', url);
-      setShareMessage('URL updated — copy from address bar');
-      setTimeout(() => setShareMessage(''), 4000);
-    });
+    setQrUrl(buildShareUrl(state));
   }, [strokes, userLocation]);
 
   const visibleSpots = allSpots.filter((s) => activeCategories.has(s.category));
@@ -88,7 +80,6 @@ function App() {
         />
 
         <div className="header-right">
-          {shareMessage && <span className="copy-success">{shareMessage}</span>}
         </div>
       </header>
 
@@ -121,6 +112,8 @@ function App() {
           />
         </main>
       </div>
+
+      {qrUrl && <QRModal url={qrUrl} onClose={() => setQrUrl(null)} />}
     </div>
   );
 }
