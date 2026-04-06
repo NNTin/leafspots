@@ -4,6 +4,7 @@ export interface MapState {
   center: [number, number];
   zoom: number;
   strokes: Stroke[];
+  pin?: [number, number] | null;
 }
 
 /** Encode MapState as a URL-safe base64 string. Coordinates are rounded to 5 decimal places (~1 m precision). */

@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { categories, spots as allSpots } from './data/spots';
+import { spots as allSpots } from './data/spots';
 import type { Category } from './data/spots';
 import type { Coordinates } from './utils/distance';
 import MapView from './components/MapView';
@@ -18,9 +18,11 @@ const DEFAULT_ZOOM = 8;
 const urlState = loadStateFromUrl();
 
 function App() {
-  const [activeCategories, setActiveCategories] = useState<Set<Category>>(new Set(categories));
-  const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [activeCategories, setActiveCategories] = useState<Set<Category>>(new Set());
+  const [userLocation, setUserLocation] = useState<Coordinates | null>(
+    urlState?.pin ? { lat: urlState.pin[0], lng: urlState.pin[1] } : null,
+  );
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
   const [strokeColor, setStrokeColor] = useState('#e53935');
   const [strokeWidth, setStrokeWidth] = useState(4);
   const [shareMessage, setShareMessage] = useState('');
@@ -42,6 +44,7 @@ function App() {
       center: mapCenterRef.current,
       zoom: mapZoomRef.current,
       strokes,
+      pin: userLocation ? [userLocation.lat, userLocation.lng] : null,
     };
     const url = buildShareUrl(state);
     navigator.clipboard.writeText(url).then(() => {
@@ -53,7 +56,7 @@ function App() {
       setShareMessage('URL updated — copy from address bar');
       setTimeout(() => setShareMessage(''), 4000);
     });
-  }, [strokes]);
+  }, [strokes, userLocation]);
 
   const visibleSpots = allSpots.filter((s) => activeCategories.has(s.category));
 
@@ -86,9 +89,6 @@ function App() {
 
         <div className="header-right">
           {shareMessage && <span className="copy-success">{shareMessage}</span>}
-          <span className="spot-count">
-            {visibleSpots.length} spot{visibleSpots.length !== 1 ? 's' : ''} visible
-          </span>
         </div>
       </header>
 
@@ -117,6 +117,7 @@ function App() {
             strokeWidth={strokeWidth}
             onStrokeComplete={addStroke}
             onViewChange={handleViewChange}
+            sidebarOpen={sidebarOpen}
           />
         </main>
       </div>
