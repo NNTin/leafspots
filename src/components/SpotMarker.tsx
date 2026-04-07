@@ -94,6 +94,13 @@ export default function SpotMarker({
           {distanceKm !== undefined && (
             <p className="spot-distance">📍 {formatDistance(distanceKm)} away</p>
           )}
+          <a
+            href={`https://www.google.com/maps?q=${lat},${lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            View on Google Maps
+          </a>
         </div>
       </Popup>
     </Marker>
