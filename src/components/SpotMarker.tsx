@@ -1,5 +1,6 @@
 import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
+import { FiEdit2 } from 'react-icons/fi';
 import { formatDistance } from '../utils/distance';
 
 // Fix default icon URLs broken by Vite's asset bundling
@@ -47,6 +48,7 @@ interface SpotMarkerProps {
   distanceKm?: number;
   draggable?: boolean;
   onDragEnd?: (lat: number, lng: number) => void;
+  onEdit?: () => void;
 }
 
 export default function SpotMarker({
@@ -59,6 +61,7 @@ export default function SpotMarker({
   distanceKm,
   draggable = false,
   onDragEnd,
+  onEdit,
 }: SpotMarkerProps) {
   const icon = createColoredIcon(color);
   const eventHandlers = {
@@ -84,7 +87,14 @@ export default function SpotMarker({
     >
       <Popup>
         <div className="spot-popup">
-          <h3>{name}</h3>
+          <div className="spot-popup-header">
+            <h3>{name}</h3>
+            {onEdit && (
+              <button className="spot-edit-btn" onClick={onEdit} aria-label="Edit marker">
+                <FiEdit2 size={14} />
+              </button>
+            )}
+          </div>
           {badgeText && (
             <span className="spot-category" style={{ background: sanitizeColor(color) }}>
               {badgeText}
@@ -94,6 +104,13 @@ export default function SpotMarker({
           {distanceKm !== undefined && (
             <p className="spot-distance">📍 {formatDistance(distanceKm)} away</p>
           )}
+          <a
+            href={`https://www.google.com/maps?q=${lat},${lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            View on Google Maps
+          </a>
         </div>
       </Popup>
     </Marker>
