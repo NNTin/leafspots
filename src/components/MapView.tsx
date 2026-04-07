@@ -24,6 +24,7 @@ interface MapViewProps {
   pinColor: string;
   onPinAdd: (lat: number, lng: number, color: string) => void;
   onPinMove: (id: string, lat: number, lng: number) => void;
+  onEditPin?: (id: string) => void;
 }
 
 // Bavaria center
@@ -106,6 +107,7 @@ export default function MapView({
   pinColor,
   onPinAdd,
   onPinMove,
+  onEditPin,
 }: MapViewProps) {
   return (
     <MapContainer
@@ -143,12 +145,14 @@ export default function MapView({
             key={pin.id}
             lat={pin.lat}
             lng={pin.lng}
-            name={`Pin ${index + 1}`}
+            name={pin.title || `Pin ${index + 1}`}
             color={pin.color}
             badgeText="pin"
+            description={pin.description || undefined}
             distanceKm={distanceKm}
             draggable={true}
             onDragEnd={(lat, lng) => onPinMove(pin.id, lat, lng)}
+            onEdit={onEditPin ? () => onEditPin(pin.id) : undefined}
           />
         );
       })}

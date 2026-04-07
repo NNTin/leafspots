@@ -32,10 +32,14 @@ function App() {
   const [pinColor, setPinColor] = useState('#e53935');
   const [overflowItems, setOverflowItems] = useState<MenuItem[]>([]);
   const [showFullTitle, setShowFullTitle] = useState(true);
+  const [editingPinId, setEditingPinId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
 
   const headerRef = useRef<HTMLElement>(null);
   const headerLeftRef = useRef<HTMLDivElement>(null);
   const fullTitleMeasureRef = useRef<HTMLSpanElement>(null);
+  const editTitleRef = useRef<HTMLInputElement>(null);
 
   // Track current map view via refs (no re-render needed)
   const mapCenterRef = useRef<[number, number]>(urlState?.center ?? BAVARIA_CENTER);
@@ -44,8 +48,10 @@ function App() {
   const { drawMode, strokes, toggleDrawMode, addStroke, undoLastStroke, clearStrokes } =
     useDrawing(urlState?.strokes ?? []);
 
-  const { pins, addPin, movePin, clearPins } = usePins(
-    () => urlState?.pins?.map(([lat, lng, color]) => ({ id: crypto.randomUUID(), lat, lng, color })) ?? [],
+  const { pins, addPin, movePin, updatePin, clearPins } = usePins(
+    () => urlState?.pins?.map(([lat, lng, color, title, description]) => ({
+      id: crypto.randomUUID(), lat, lng, color, title: title ?? '', description: description ?? '',
+    })) ?? [],
   );
 
   // Draw mode and pin mode are mutually exclusive
@@ -59,6 +65,25 @@ function App() {
     setPinMode((prev) => !prev);
   }, [drawMode, toggleDrawMode]);
 
+  const handleEditPin = useCallback((id: string) => {
+    const pin = pins.find((p) => p.id === id);
+    if (!pin) return;
+    setEditTitle(pin.title);
+    setEditDescription(pin.description);
+    setEditingPinId(id);
+    setSidebarOpen(true);
+  }, [pins]);
+
+  const handleSavePin = useCallback(() => {
+    if (editingPinId === null) return;
+    updatePin(editingPinId, { title: editTitle, description: editDescription });
+    setEditingPinId(null);
+  }, [editingPinId, editTitle, editDescription, updatePin]);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingPinId(null);
+  }, []);
+
   const handleViewChange = useCallback((center: [number, number], zoom: number) => {
     mapCenterRef.current = center;
     mapZoomRef.current = zoom;
@@ -70,7 +95,7 @@ function App() {
       zoom: mapZoomRef.current,
       strokes,
       pin: userLocation ? [userLocation.lat, userLocation.lng] : null,
-      pins: pins.map(({ lat, lng, color }) => [lat, lng, color]),
+      pins: pins.map(({ lat, lng, color, title, description }) => [lat, lng, color, title, description]),
     };
     const url = buildShareUrl(state);
     navigator.clipboard.writeText(url).then(() => {
@@ -149,13 +174,20 @@ function App() {
     return () => observer.disconnect();
   }, [recalculateTitle]);
 
+  useEffect(() => {
+    if (editingPinId !== null) {
+      const timerId = setTimeout(() => editTitleRef.current?.focus(), 50);
+      return () => clearTimeout(timerId);
+    }
+  }, [editingPinId]);
+
   const getShareUrl = useCallback((): string => {
     const state: MapState = {
       center: mapCenterRef.current,
       zoom: mapZoomRef.current,
       strokes,
       pin: userLocation ? [userLocation.lat, userLocation.lng] : null,
-      pins: pins.map(({ lat, lng, color }) => [lat, lng, color]),
+      pins: pins.map(({ lat, lng, color, title, description }) => [lat, lng, color, title, description]),
     };
     return buildShareUrl(state);
   }, [strokes, userLocation, pins]);
@@ -220,6 +252,40 @@ function App() {
                 ))}
               </div>
             )}
+            {editingPinId !== null && (
+              <div className="edit-pin-panel">
+                <h2>Edit Pin</h2>
+                <div className="edit-pin-form">
+                  <label>
+                    Title
+                    <input
+                      ref={editTitleRef}
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSavePin();
+                        if (e.key === 'Escape') handleCancelEdit();
+                      }}
+                      placeholder="Pin title"
+                    />
+                  </label>
+                  <label>
+                    Description
+                    <textarea
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Escape') handleCancelEdit(); }}
+                      placeholder="Description (optional)"
+                      rows={3}
+                    />
+                  </label>
+                  <div className="edit-pin-actions">
+                    <button onClick={handleSavePin}>Save</button>
+                    <button onClick={handleCancelEdit}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            )}
             <LocationInput
               userLocation={userLocation}
               onLocationChange={setUserLocation}
@@ -253,6 +319,7 @@ function App() {
             pinColor={pinColor}
             onPinAdd={addPin}
             onPinMove={movePin}
+            onEditPin={handleEditPin}
           />
         </main>
       </div>

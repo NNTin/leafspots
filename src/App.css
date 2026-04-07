@@ -459,7 +459,7 @@
 
 /* ── Spot popup ──────────────────────────────────────────── */
 .spot-popup h3 {
-  margin: 0 0 6px;
+  margin: 0;
   font-size: 1rem;
 }
 
@@ -656,7 +656,124 @@
   color: #c62828;
 }
 
-/* ── Orientation-aware sidebar ───────────────────────────── */
+/* ── Edit pin panel ──────────────────────────────────────── */
+.edit-pin-panel {
+  padding: 16px;
+  border-bottom: 1px solid #ddd;
+  background: #f9fbe7;
+}
+
+.edit-pin-panel h2 {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #333;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.edit-pin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.edit-pin-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #555;
+}
+
+.edit-pin-form input,
+.edit-pin-form textarea {
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.edit-pin-form input:focus,
+.edit-pin-form textarea:focus {
+  outline: 2px solid #2e7d32;
+  outline-offset: 1px;
+}
+
+.edit-pin-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.edit-pin-actions button {
+  flex: 1;
+  padding: 7px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.edit-pin-actions button:first-child {
+  background: #2e7d32;
+  color: white;
+  border: none;
+}
+
+.edit-pin-actions button:first-child:hover {
+  background: #1b5e20;
+}
+
+.edit-pin-actions button:last-child {
+  background: transparent;
+  border: 1px solid #bbb;
+  color: #555;
+}
+
+.edit-pin-actions button:last-child:hover {
+  background: #f0f0f0;
+}
+
+/* ── Spot popup header ───────────────────────────────────── */
+.spot-popup-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.spot-popup-header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.spot-edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 3px 5px;
+  cursor: pointer;
+  color: #555;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.spot-edit-btn:hover {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-color: #81c784;
+}
 .sidebar-rotate-message {
   margin: auto 0 0;
   padding: 16px;

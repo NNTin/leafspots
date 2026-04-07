@@ -7,7 +7,7 @@ export interface MapState {
   zoom: number;
   strokes: Stroke[];
   pin?: [number, number] | null;
-  pins?: [number, number, string][];
+  pins?: Array<[number, number, string, string?, string?]>;
 }
 
 // ─── Palette (must stay in sync with DrawingControls.tsx) ─────────────────────
@@ -60,7 +60,7 @@ function fromBase64Url(str: string): Uint8Array {
 // pins entry: [lat5, lng5, colorIdxOrHex]
 type CompactColor = number | string;
 type CompactStroke = [CompactColor, number, number[]];
-type CompactPin = [number, number, CompactColor];
+type CompactPin = [number, number, CompactColor] | [number, number, CompactColor, string, string];
 type CompactV2 = [number, number, number, [number, number] | null, CompactStroke[], CompactPin[]];
 
 function toCompactV2(state: MapState): CompactV2 {
@@ -78,9 +78,13 @@ function toCompactV2(state: MapState): CompactV2 {
     return [encodeColor(s.color), encodeWidth(s.width), flat];
   });
 
-  const pins: CompactPin[] = (state.pins ?? []).map(([lat, lng, color]) => [
-    i5(lat), i5(lng), encodeColor(color),
-  ]);
+  const pins: CompactPin[] = (state.pins ?? []).map(([lat, lng, color, title, description]) => {
+    const base: [number, number, CompactColor] = [i5(lat), i5(lng), encodeColor(color)];
+    if (title || description) {
+      return [...base, title ?? '', description ?? ''];
+    }
+    return base;
+  });
 
   return [
     i5(state.center[0]),
@@ -107,8 +111,10 @@ function fromCompactV2(c: CompactV2): MapState {
     return { id: `s${idx}`, color: decodeColor(colorRaw), width: decodeWidth(widthRaw), points };
   });
 
-  const pins: [number, number, string][] = pinsRaw.map(
-    ([lat5, lng5, colorRaw]) => [f5(lat5), f5(lng5), decodeColor(colorRaw)],
+  const pins: Array<[number, number, string, string?, string?]> = pinsRaw.map(
+    ([lat5, lng5, colorRaw, title, description]) => [
+      f5(lat5), f5(lng5), decodeColor(colorRaw), title ?? '', description ?? '',
+    ],
   );
 
   return {
