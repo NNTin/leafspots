@@ -16,7 +16,7 @@ const SOCIAL_LINKS = [
   {
     id: 'github',
     label: 'GitHub',
-    href: 'https://github.com/thedinolino',
+    href: 'https://github.com/nntin/leafspots',
     Icon: FaGithub,
   },
 ] as const;
