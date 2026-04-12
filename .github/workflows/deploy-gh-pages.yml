@@ -32,6 +32,8 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          VITE_LEAFLET_API_ORIGIN: https://leaflet.lair.nntin.xyz
 
       - name: Deploy to orphan gh-pages branch
         uses: peaceiris/actions-gh-pages@v4

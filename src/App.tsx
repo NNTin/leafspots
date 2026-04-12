@@ -4,12 +4,15 @@ import MapView from './components/MapView';
 import LocationInput from './components/LocationInput';
 import DrawingControls from './components/DrawingControls';
 import ShareButton from './components/ShareButton';
+import LeafletPanel from './components/LeafletPanel';
 import SidebarSocialIcons from './components/SidebarSocialIcons';
 import type { MenuItem } from './components/OverflowMenuBar';
 import { useDrawing } from './hooks/useDrawing';
 import { usePins } from './hooks/usePins';
 import { useOrientation } from './hooks/useOrientation';
+import { useLeafletConnection } from './hooks/useLeafletConnection';
 import { loadStateFromUrl, buildShareUrl } from './utils/urlState';
+import { shortenUrl } from './lib/leaflet-client';
 import type { MapState } from './utils/urlState';
 import './App.css';
 
@@ -35,6 +38,7 @@ function App() {
   const [editingPinId, setEditingPinId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
+  const [selectedTtl, setSelectedTtl] = useState('5m');
 
   const headerRef = useRef<HTMLElement>(null);
   const headerLeftRef = useRef<HTMLDivElement>(null);
@@ -53,6 +57,17 @@ function App() {
       id: crypto.randomUUID(), lat, lng, color, title: title ?? '', description: description ?? '',
     })) ?? [],
   );
+
+  const leaflet = useLeafletConnection();
+
+  // Keep selectedTtl in sync with capabilities (guard against the current value
+  // disappearing when capabilities reload with a shorter list).
+  useEffect(() => {
+    const opts = leaflet.capabilities?.ttlOptions;
+    if (opts && opts.length > 0 && !opts.some((o) => o.value === selectedTtl)) {
+      setSelectedTtl(opts[0].value);
+    }
+  }, [leaflet.capabilities, selectedTtl]);
 
   // Draw mode and pin mode are mutually exclusive
   const handleToggleDrawMode = useCallback(() => {
@@ -192,6 +207,17 @@ function App() {
     return buildShareUrl(state);
   }, [strokes, userLocation, pins]);
 
+  // Only wire the shortener when the user is connected and shortening is allowed.
+  const isConnected =
+    leaflet.connectionState === 'anonymous' || leaflet.connectionState === 'authenticated';
+  const shorteningEnabled =
+    isConnected && (leaflet.capabilities?.shortenAllowed ?? false);
+
+  const getShortenedUrl = useCallback(
+    (longUrl: string) => shortenUrl(longUrl, selectedTtl),
+    [selectedTtl],
+  );
+
   return (
     <div className="app">
       <header ref={headerRef} className="app-header">
@@ -291,8 +317,16 @@ function App() {
               onLocationChange={setUserLocation}
             />
             <div className="share-panel">
-              <ShareButton getShareUrl={getShareUrl} />
+              <ShareButton
+                getShareUrl={getShareUrl}
+                getShortenedUrl={shorteningEnabled ? getShortenedUrl : undefined}
+              />
             </div>
+            <LeafletPanel
+              {...leaflet}
+              selectedTtl={selectedTtl}
+              onTtlChange={setSelectedTtl}
+            />
             {orientation === 'portrait' ? (
               <div className="sidebar-rotate-message" role="status">
                 🔄 Rotate your phone to horizontal mode for a better experience

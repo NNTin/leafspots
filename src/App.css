@@ -656,6 +656,16 @@
   color: #c62828;
 }
 
+.share-modal-shorten-error {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #c62828;
+  background: #fff5f5;
+  border: 1px solid #ffcdd2;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
 /* ── Edit pin panel ──────────────────────────────────────── */
 .edit-pin-panel {
   padding: 16px;
@@ -823,4 +833,188 @@
 .social-icon-link:hover {
   color: #2e7d32;
   background: rgba(46, 125, 50, 0.08);
+}
+
+/* ── Leaflet shortener panel ─────────────────────────────── */
+.leaflet-panel {
+  padding: 16px;
+  border-bottom: 1px solid #ddd;
+}
+
+.leaflet-panel h2 {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #333;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Auth-return failure banner */
+.leaflet-auth-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  color: #5d4037;
+  margin-bottom: 10px;
+}
+
+.leaflet-auth-banner-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #8d6e63;
+  font-size: 0.75rem;
+  padding: 0 2px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.leaflet-auth-banner-close:hover {
+  color: #4e342e;
+}
+
+/* Status row */
+.leaflet-status-row {
+  margin-bottom: 10px;
+}
+
+.leaflet-status-badge {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+
+.leaflet-status-ok {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.leaflet-status-busy {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.leaflet-status-warn {
+  background: #fff8e1;
+  color: #e65100;
+}
+
+.leaflet-status-error {
+  background: #ffebee;
+  color: #c62828;
+}
+
+/* Hint text */
+.leaflet-hint {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  color: #666;
+  line-height: 1.4;
+}
+
+/* TTL selector */
+.leaflet-ttl-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.leaflet-ttl-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #555;
+  white-space: nowrap;
+}
+
+.leaflet-ttl-select {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  background: white;
+  color: #333;
+  cursor: pointer;
+}
+.leaflet-ttl-select:focus {
+  outline: 2px solid #2e7d32;
+  outline-offset: 1px;
+}
+
+/* Action buttons */
+.leaflet-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.leaflet-btn {
+  width: 100%;
+  padding: 7px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  text-align: center;
+}
+
+.leaflet-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.leaflet-btn-primary {
+  background: #2e7d32;
+  color: white;
+  border: none;
+}
+.leaflet-btn-primary:hover:not(:disabled) {
+  background: #1b5e20;
+}
+
+.leaflet-btn-secondary {
+  background: transparent;
+  color: #2e7d32;
+  border: 1.5px solid #2e7d32;
+}
+.leaflet-btn-secondary:hover:not(:disabled) {
+  background: #e8f5e9;
+}
+
+.leaflet-btn-ghost {
+  background: transparent;
+  color: #555;
+  border: 1px solid #bbb;
+}
+.leaflet-btn-ghost:hover:not(:disabled) {
+  background: #f0f0f0;
+}
+
+/* Disclaimer */
+.leaflet-disclaimer {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #888;
+  line-height: 1.4;
+}
+
+.leaflet-disclaimer-link {
+  color: #2e7d32;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+.leaflet-disclaimer-link:hover {
+  color: #1b5e20;
 }
