@@ -41,7 +41,10 @@ let _csrfToken: string | null = null;
 // ── Helpers ─────────────────────────────────────────────────
 
 function getApiOrigin(): string {
-  return (import.meta.env.VITE_LEAFLET_API_ORIGIN as string | undefined) ?? '';
+  return (
+    (import.meta.env.VITE_LEAFLET_API_ORIGIN as string | undefined) ||
+    'https://leaflet.lair.nntin.xyz'
+  );
 }
 
 function parseRetryAfter(res: Response): number | null {
