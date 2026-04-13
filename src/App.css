@@ -1018,3 +1018,191 @@
 .leaflet-disclaimer-link:hover {
   color: #1b5e20;
 }
+
+/* ── Connection status info ──────────────────────────────── */
+.leaflet-status-info-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Subtle hover affordance on the badge — desktop only */
+@media (hover: hover) {
+  .leaflet-status-hoverable {
+    cursor: help;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+
+  /* Hide info icon on pointer/hover devices */
+  .leaflet-status-info-btn {
+    display: none;
+  }
+}
+
+/* Info icon button — touch devices only */
+.leaflet-status-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 44×44 touch target via negative margin + padding */
+  width: 44px;
+  height: 44px;
+  margin: -10px -10px -10px 0;
+  padding: 10px;
+  background: transparent;
+  border: none;
+  color: #2e7d32;
+  font-size: 1rem;
+  cursor: pointer;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.leaflet-status-info-btn:hover {
+  background: rgba(46, 125, 50, 0.1);
+}
+.leaflet-status-info-btn:focus-visible {
+  outline: 2px solid #2e7d32;
+  outline-offset: 2px;
+}
+
+/* Tooltip — rendered via portal, position: fixed */
+.leaflet-status-tooltip {
+  position: fixed;
+  z-index: 2100;
+  width: 232px;
+  background: #fff;
+  border: 1px solid #c8e6c9;
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
+  pointer-events: none;
+}
+
+/* Arrow pointing up */
+.leaflet-status-tooltip::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 14px;
+  width: 9px;
+  height: 9px;
+  background: #fff;
+  border: 1px solid #c8e6c9;
+  border-bottom: none;
+  border-right: none;
+  transform: rotate(45deg);
+}
+
+.leaflet-status-tooltip-title {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #1b5e20;
+  margin-bottom: 5px;
+}
+
+.leaflet-status-tooltip-body {
+  margin: 0 0 5px;
+  font-size: 0.78rem;
+  color: #444;
+  line-height: 1.45;
+}
+
+.leaflet-status-tooltip-ttl {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #555;
+  line-height: 1.45;
+  padding-top: 5px;
+  border-top: 1px solid #e8f5e9;
+}
+
+/* Bottom sheet overlay */
+.leaflet-info-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 2000;
+  display: flex;
+  align-items: flex-end;
+  animation: leaflet-fade-in 0.15s ease;
+}
+
+@keyframes leaflet-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.leaflet-info-sheet {
+  width: 100%;
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  padding: 20px 20px 36px;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: leaflet-sheet-up 0.22s ease;
+}
+
+@keyframes leaflet-sheet-up {
+  from { transform: translateY(60px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.leaflet-info-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.leaflet-info-sheet-badge {
+  /* inherits leaflet-status-ok / leaflet-status-busy etc. */
+}
+
+.leaflet-info-sheet-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -10px;
+  background: transparent;
+  border: none;
+  color: #666;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.leaflet-info-sheet-close:hover {
+  background: #f0f0f0;
+}
+.leaflet-info-sheet-close:focus-visible {
+  outline: 2px solid #2e7d32;
+  outline-offset: 2px;
+}
+
+.leaflet-info-sheet-desc {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #333;
+  line-height: 1.5;
+}
+
+.leaflet-info-sheet-ttl {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #2e7d32;
+  line-height: 1.5;
+  background: #f1f8f2;
+  border-left: 3px solid #81c784;
+  border-radius: 0 6px 6px 0;
+  padding: 8px 10px;
+}
