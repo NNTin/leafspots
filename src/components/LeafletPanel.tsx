@@ -162,7 +162,7 @@ function ConnectionStatusInfo({
         <span
           className={`${badgeClass} leaflet-status-hoverable`}
           tabIndex={0}
-          aria-describedby={STATUS_TOOLTIP_ID}
+          aria-describedby={tooltipVisible ? STATUS_TOOLTIP_ID : undefined}
         >
           {label}
         </span>

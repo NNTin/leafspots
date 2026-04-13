@@ -42,8 +42,17 @@ export function useLeafletConnection(): LeafletConnectionState {
   const isMounted = useRef(true);
   useEffect(() => () => { isMounted.current = false; }, []);
 
-  const applySessionResult = useCallback(async (result: SessionResult, options?: { force?: boolean }) => {
-    if (!isMounted.current) return;
+  // Monotonically-increasing counter: each refreshSession call captures its own
+  // requestId and abandons its result if the counter has advanced (e.g. disconnect
+  // was called while the fetch was in flight).
+  const requestIdRef = useRef(0);
+
+  const applySessionResult = useCallback(async (
+    result: SessionResult,
+    requestId: number,
+    options?: { force?: boolean },
+  ) => {
+    if (!isMounted.current || requestId !== requestIdRef.current) return;
 
     switch (result.status) {
       case 'anonymous':
@@ -68,7 +77,7 @@ export function useLeafletConnection(): LeafletConnectionState {
 
     if (result.status === 'anonymous' || result.status === 'authenticated') {
       const caps = await getLeafletCapabilities({ force: options?.force });
-      if (isMounted.current) setCapabilities(caps);
+      if (isMounted.current && requestId === requestIdRef.current) setCapabilities(caps);
     } else {
       setCapabilities(null);
     }
@@ -77,8 +86,10 @@ export function useLeafletConnection(): LeafletConnectionState {
   const refreshSession = useCallback(async (options?: { force?: boolean }) => {
     if (!isLeafletOptedIn()) return;
     setConnectionState('connecting');
+    requestIdRef.current += 1;
+    const requestId = requestIdRef.current;
     const result = await getLeafletSession({ force: options?.force });
-    if (isMounted.current) await applySessionResult(result, options);
+    await applySessionResult(result, requestId, options);
   }, [applySessionResult]);
 
   // On mount: check for auth-return param and restore session if opted in.
@@ -112,6 +123,7 @@ export function useLeafletConnection(): LeafletConnectionState {
   );
 
   const disconnect = useCallback(() => {
+    requestIdRef.current += 1; // invalidate any in-flight refreshSession result
     setLeafletOptIn(false);
     clearLeafletConnectionCaches();
     setConnectionState('disconnected');

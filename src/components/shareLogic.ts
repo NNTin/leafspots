@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { ShortenResult } from '../lib/leaflet-client';
 import { getShortenModalMessage } from './shareMessaging';
 
@@ -80,6 +80,11 @@ export function useConnectedShare({
   const [modal, setModal] = useState<ShareModalState>({ open: false });
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => () => {
+    clearTimeout(copyTimeoutRef.current);
+  }, []);
 
   const openModal = useCallback((url: string, shortenError?: string) => {
     setModal({ open: true, url, shortenError });
@@ -133,7 +138,11 @@ export function useConnectedShare({
     navigator.clipboard.writeText(modal.url).then(() => {
       setCopied(true);
       setCopyError(false);
-      setTimeout(() => setCopied(false), 2000);
+      clearTimeout(copyTimeoutRef.current);
+      copyTimeoutRef.current = setTimeout(() => {
+        copyTimeoutRef.current = undefined;
+        setCopied(false);
+      }, 2000);
     }).catch(() => {
       setCopyError(true);
     });
@@ -143,6 +152,8 @@ export function useConnectedShare({
     setModal({ open: false });
     setCopied(false);
     setCopyError(false);
+    clearTimeout(copyTimeoutRef.current);
+    copyTimeoutRef.current = undefined;
   }, []);
 
   return {
