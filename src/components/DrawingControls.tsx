@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import type { ReactNode } from 'react';
 import OverflowMenuBar from './OverflowMenuBar';
 import type { MenuItem } from './OverflowMenuBar';
 
@@ -8,7 +9,6 @@ interface Props {
   onToggleDrawMode: () => void;
   onUndo: () => void;
   onClear: () => void;
-  onExport: () => void;
   strokeColor: string;
   strokeWidth: number;
   onColorChange: (color: string) => void;
@@ -19,6 +19,7 @@ interface Props {
   onTogglePinMode: () => void;
   onClearPins: () => void;
   onPinColorChange: (color: string) => void;
+  shareControl: ReactNode;
   onOverflowChange?: (items: MenuItem[]) => void;
 }
 
@@ -31,7 +32,6 @@ export default function DrawingControls({
   onToggleDrawMode,
   onUndo,
   onClear,
-  onExport,
   strokeColor,
   strokeWidth,
   onColorChange,
@@ -42,6 +42,7 @@ export default function DrawingControls({
   onTogglePinMode,
   onClearPins,
   onPinColorChange,
+  shareControl,
   onOverflowChange,
 }: Props) {
   const items: MenuItem[] = useMemo(() => {
@@ -178,16 +179,7 @@ export default function DrawingControls({
     // ── Share link ───────────────────────────────────────────
     nextItems.push({
       id: 'share',
-      node: (
-        <button
-          className="draw-action-btn"
-          onClick={onExport}
-          title="Copy shareable link to clipboard"
-          aria-label="Share map"
-        >
-          🔗
-        </button>
-      ),
+      node: shareControl,
     });
 
     return nextItems;
@@ -207,7 +199,7 @@ export default function DrawingControls({
     onPinColorChange,
     hasPins,
     onClearPins,
-    onExport,
+    shareControl,
   ]);
 
   return <OverflowMenuBar items={items} onOverflowChange={onOverflowChange} className="drawing-controls" />;

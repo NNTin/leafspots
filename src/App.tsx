@@ -1,9 +1,10 @@
-import { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import type { Coordinates } from './utils/distance';
 import MapView from './components/MapView';
 import LocationInput from './components/LocationInput';
 import DrawingControls from './components/DrawingControls';
 import ShareButton from './components/ShareButton';
+import NavShareButton from './components/NavShareButton';
 import LeafletPanel from './components/LeafletPanel';
 import SidebarSocialIcons from './components/SidebarSocialIcons';
 import type { MenuItem } from './components/OverflowMenuBar';
@@ -44,6 +45,7 @@ function App() {
   const headerLeftRef = useRef<HTMLDivElement>(null);
   const fullTitleMeasureRef = useRef<HTMLSpanElement>(null);
   const editTitleRef = useRef<HTMLInputElement>(null);
+  const shareToastTimeoutRef = useRef<number | null>(null);
 
   // Track current map view via refs (no re-render needed)
   const mapCenterRef = useRef<[number, number]>(urlState?.center ?? BAVARIA_CENTER);
@@ -60,13 +62,10 @@ function App() {
 
   const leaflet = useLeafletConnection();
 
-  // Keep selectedTtl in sync with capabilities (guard against the current value
-  // disappearing when capabilities reload with a shorter list).
-  useEffect(() => {
+  const effectiveSelectedTtl = useMemo(() => {
     const opts = leaflet.capabilities?.ttlOptions;
-    if (opts && opts.length > 0 && !opts.some((o) => o.value === selectedTtl)) {
-      setSelectedTtl(opts[0].value);
-    }
+    if (!opts || opts.length === 0) return selectedTtl;
+    return opts.some((o) => o.value === selectedTtl) ? selectedTtl : opts[0].value;
   }, [leaflet.capabilities, selectedTtl]);
 
   // Draw mode and pin mode are mutually exclusive
@@ -104,25 +103,23 @@ function App() {
     mapZoomRef.current = zoom;
   }, []);
 
-  const handleExport = useCallback(() => {
-    const state: MapState = {
-      center: mapCenterRef.current,
-      zoom: mapZoomRef.current,
-      strokes,
-      pin: userLocation ? [userLocation.lat, userLocation.lng] : null,
-      pins: pins.map(({ lat, lng, color, title, description }) => [lat, lng, color, title, description]),
-    };
-    const url = buildShareUrl(state);
-    navigator.clipboard.writeText(url).then(() => {
-      setShareMessage('✓ Link copied!');
-      setTimeout(() => setShareMessage(''), 2000);
-    }).catch(() => {
-      // Clipboard unavailable — update address bar so user can copy manually
-      window.history.replaceState(null, '', url);
-      setShareMessage('URL updated — copy from address bar');
-      setTimeout(() => setShareMessage(''), 4000);
-    });
-  }, [strokes, userLocation, pins]);
+  const showShareMessage = useCallback((message: string) => {
+    if (shareToastTimeoutRef.current !== null) {
+      window.clearTimeout(shareToastTimeoutRef.current);
+    }
+
+    setShareMessage(message);
+    shareToastTimeoutRef.current = window.setTimeout(() => {
+      setShareMessage('');
+      shareToastTimeoutRef.current = null;
+    }, message === 'URL updated — copy from address bar' ? 4000 : 2000);
+  }, []);
+
+  useEffect(() => () => {
+    if (shareToastTimeoutRef.current !== null) {
+      window.clearTimeout(shareToastTimeoutRef.current);
+    }
+  }, []);
 
   const recalculateTitle = useCallback(() => {
     const headerEl = headerRef.current;
@@ -170,7 +167,10 @@ function App() {
   }, [overflowItems.length]);
 
   useLayoutEffect(() => {
-    recalculateTitle();
+    const frameId = window.requestAnimationFrame(() => {
+      recalculateTitle();
+    });
+    return () => window.cancelAnimationFrame(frameId);
   }, [recalculateTitle]);
 
   useEffect(() => {
@@ -214,9 +214,13 @@ function App() {
     isConnected && (leaflet.capabilities?.shortenAllowed ?? false);
 
   const getShortenedUrl = useCallback(
-    (longUrl: string) => shortenUrl(longUrl, selectedTtl),
-    [selectedTtl],
+    (longUrl: string) => shortenUrl(longUrl, effectiveSelectedTtl),
+    [effectiveSelectedTtl],
   );
+
+  const handleOpenSidebar = useCallback(() => {
+    setSidebarOpen(true);
+  }, []);
 
   return (
     <div className="app">
@@ -239,7 +243,6 @@ function App() {
             onToggleDrawMode={handleToggleDrawMode}
             onUndo={undoLastStroke}
             onClear={clearStrokes}
-            onExport={handleExport}
             strokeColor={strokeColor}
             strokeWidth={strokeWidth}
             onColorChange={setStrokeColor}
@@ -250,6 +253,15 @@ function App() {
             onTogglePinMode={handleTogglePinMode}
             onClearPins={clearPins}
             onPinColorChange={setPinColor}
+            shareControl={(
+              <NavShareButton
+                connected={isConnected}
+                getShareUrl={getShareUrl}
+                getShortenedUrl={shorteningEnabled ? getShortenedUrl : undefined}
+                onCopied={showShareMessage}
+                onOpenSidebar={handleOpenSidebar}
+              />
+            )}
             onOverflowChange={setOverflowItems}
           />
         </div>
@@ -318,13 +330,15 @@ function App() {
             />
             <div className="share-panel">
               <ShareButton
+                connected={isConnected}
                 getShareUrl={getShareUrl}
                 getShortenedUrl={shorteningEnabled ? getShortenedUrl : undefined}
+                onOpenSidebar={handleOpenSidebar}
               />
             </div>
             <LeafletPanel
               {...leaflet}
-              selectedTtl={selectedTtl}
+              selectedTtl={effectiveSelectedTtl}
               onTtlChange={setSelectedTtl}
             />
             {orientation === 'portrait' ? (
