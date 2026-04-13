@@ -263,6 +263,8 @@ function App() {
               <NavShareButton
                 connected={isConnected}
                 getShareUrl={getShareUrl}
+                selectedTtl={shorteningEnabled ? effectiveSelectedTtl : undefined}
+                selectedTtlLabel={shorteningEnabled ? effectiveSelectedTtlLabel : undefined}
                 getShortenedUrl={shorteningEnabled ? getShortenedUrl : undefined}
                 onCopied={showShareMessage}
                 onOpenSidebar={handleOpenSidebar}

@@ -1,19 +1,21 @@
 import { useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import type { ShortenResult } from '../lib/leaflet-client';
 import {
-  getShortenCopiedFallbackMessage,
-  getShortenManualFallbackMessage,
   NAV_SHARE_UPSELL_BODY,
   SHARE_CONNECT_BENEFIT,
   SHARE_CONNECT_STEPS,
 } from './shareMessaging';
+import ShareUrlModal from './ShareUrlModal';
+import { useConnectedShare } from './shareLogic';
+import type { ShortenResult } from '../lib/leaflet-client';
 
 type CopyFeedbackTone = 'success' | 'error';
 
 interface Props {
   connected: boolean;
   getShareUrl: () => string;
+  selectedTtl?: string;
+  selectedTtlLabel?: string;
   /**
    * When provided (connected state) the button shortens the URL before copying.
    * Omitting this prop puts the button in disconnected mode: copy the long URL
@@ -29,12 +31,19 @@ const UPSELL_TITLE_ID = 'nav-share-upsell-title';
 export default function NavShareButton({
   connected,
   getShareUrl,
+  selectedTtl,
+  selectedTtlLabel,
   getShortenedUrl,
   onCopied,
   onOpenSidebar,
 }: Props) {
-  const [busy, setBusy] = useState(false);
   const [upsellOpen, setUpsellOpen] = useState(false);
+  const share = useConnectedShare({
+    getShareUrl,
+    getShortenedUrl,
+    selectedTtl,
+    selectedTtlLabel,
+  });
 
   useEffect(() => {
     if (!upsellOpen) return;
@@ -46,40 +55,23 @@ export default function NavShareButton({
   }, [upsellOpen]);
 
   const handleClick = useCallback(async () => {
-    const longUrl = getShareUrl();
-    let toCopy = longUrl;
-    let copyMsg = 'Link copied';
-    let copyTone: CopyFeedbackTone = 'success';
-    let manualCopyMsg = 'URL updated — copy from address bar';
-
-    if (connected && getShortenedUrl) {
-      setBusy(true);
-      try {
-        const result = await getShortenedUrl(longUrl);
-        if (result.ok) {
-          toCopy = result.shortUrl;
-        } else {
-          copyMsg = getShortenCopiedFallbackMessage(result.error);
-          manualCopyMsg = getShortenManualFallbackMessage(result.error);
-          copyTone = 'error';
-        }
-      } finally {
-        setBusy(false);
-      }
+    if (connected) {
+      await share.handleShare();
+      return;
     }
+
+    const longUrl = getShareUrl();
 
     try {
-      await navigator.clipboard.writeText(toCopy);
-      onCopied?.(copyMsg, copyTone);
+      await navigator.clipboard.writeText(longUrl);
+      onCopied?.('Link copied', 'success');
     } catch {
-      window.history.replaceState(null, '', toCopy);
-      onCopied?.(manualCopyMsg, copyTone);
+      window.history.replaceState(null, '', longUrl);
+      onCopied?.('URL updated — copy from address bar', 'success');
     }
 
-    if (!connected) {
-      setUpsellOpen(true);
-    }
-  }, [connected, getShareUrl, getShortenedUrl, onCopied]);
+    setUpsellOpen(true);
+  }, [connected, getShareUrl, onCopied, share]);
 
   const closeUpsell = useCallback(() => setUpsellOpen(false), []);
 
@@ -93,12 +85,20 @@ export default function NavShareButton({
       <button
         className="draw-action-btn"
         onClick={handleClick}
-        disabled={busy}
-        title={busy ? 'Preparing link…' : 'Copy shareable link to clipboard'}
-        aria-label={busy ? 'Preparing link…' : 'Copy shareable link'}
+        disabled={share.busy}
+        title={share.busy ? 'Preparing share link…' : connected ? 'Share shortened link' : 'Copy shareable link to clipboard'}
+        aria-label={share.busy ? 'Preparing share link…' : connected ? 'Share shortened link' : 'Copy shareable link'}
       >
-        {busy ? '⏳' : '🔗'}
+        {share.busy ? '⏳' : '🔗'}
       </button>
+
+      <ShareUrlModal
+        modal={share.modal}
+        copied={share.copied}
+        copyError={share.copyError}
+        onCopy={share.handleCopy}
+        onClose={share.handleClose}
+      />
 
       {upsellOpen && createPortal(
         <div

@@ -3,13 +3,14 @@ import { createPortal } from 'react-dom';
 import { FiInfo } from 'react-icons/fi';
 import type { ShortenResult } from '../lib/leaflet-client';
 import {
-  getShortenModalMessage,
   SHARE_CONNECT_BENEFIT,
   SHARE_CONNECT_BODY,
   SHARE_CONNECT_INSTRUCTIONS,
   SHARE_CONNECT_STEPS,
   SHARE_CONNECT_TITLE,
 } from './shareMessaging';
+import ShareUrlModal from './ShareUrlModal';
+import { useConnectedShare } from './shareLogic';
 
 interface Props {
   connected: boolean;
@@ -25,67 +26,6 @@ interface Props {
   onOpenSidebar?: () => void;
 }
 
-const SHARE_TITLE = 'Leafspots 🍃🍺';
-const SHARE_TEXT = 'Draw, mark, and share the places you love';
-
-function parseTtlToMs(ttl: string): number | null {
-  const match = ttl.match(/^(\d+)([mhdw])$/);
-  if (!match) return null;
-
-  const amount = Number(match[1]);
-  if (!Number.isFinite(amount) || amount <= 0) return null;
-
-  switch (match[2]) {
-    case 'm': return amount * 60_000;
-    case 'h': return amount * 3_600_000;
-    case 'd': return amount * 86_400_000;
-    case 'w': return amount * 604_800_000;
-    default: return null;
-  }
-}
-
-function formatTtlLabel(ttl: string, ttlLabel?: string): string {
-  const parsedMs = parseTtlToMs(ttl);
-  if (parsedMs === null) {
-    return ttlLabel?.trim() || ttl;
-  }
-
-  const match = ttl.match(/^(\d+)([mhdw])$/);
-  if (!match) return ttlLabel?.trim() || ttl;
-
-  const amount = Number(match[1]);
-  const unit =
-    match[2] === 'm' ? 'minute'
-      : match[2] === 'h' ? 'hour'
-        : match[2] === 'd' ? 'day'
-          : 'week';
-
-  return `${amount} ${unit}${amount === 1 ? '' : 's'}`;
-}
-
-function formatUtcTimestamp(date: Date): string {
-  return `${date.toISOString().slice(0, 19).replace('T', ' ')} UTC`;
-}
-
-function buildShareText(selectedTtl?: string, selectedTtlLabel?: string): string {
-  if (!selectedTtl) return SHARE_TEXT;
-  if (selectedTtl === 'never') {
-    return `${SHARE_TEXT}. ♥`;
-  }
-
-  const ttlMs = parseTtlToMs(selectedTtl);
-  if (ttlMs === null) return SHARE_TEXT;
-
-  const expiresAt = new Date(Date.now() + ttlMs);
-  const ttlText = formatTtlLabel(selectedTtl, selectedTtlLabel);
-
-  return `${SHARE_TEXT}. This short link expires in ${ttlText} at ${formatUtcTimestamp(expiresAt)}.`;
-}
-
-type ModalState =
-  | { open: false }
-  | { open: true; url: string; shortenError?: string };
-
 const DISABLED_TOOLTIP_ID = 'share-disabled-tooltip';
 const DISABLED_SHEET_TITLE_ID = 'share-disabled-sheet-title';
 
@@ -97,91 +37,18 @@ export default function ShareButton({
   getShortenedUrl,
   onOpenSidebar,
 }: Props) {
-  const [shortening, setShortening] = useState(false);
-  const [modal, setModal] = useState<ModalState>({ open: false });
-  const [copied, setCopied] = useState(false);
-  const [copyError, setCopyError] = useState(false);
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
   const [sheetOpen, setSheetOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const infoBtnRef = useRef<HTMLButtonElement>(null);
 
-  const urlInputRef = useCallback((el: HTMLInputElement | null) => {
-    if (el) el.select();
-  }, []);
-
-  const openModal = useCallback(
-    (url: string, shortenError?: string) => {
-      setModal({ open: true, url, shortenError });
-      setCopied(false);
-      setCopyError(false);
-    },
-    [],
-  );
-
-  const handleShare = useCallback(async () => {
-    if (!connected) return;
-
-    const longUrl = getShareUrl();
-
-    let shareUrl = longUrl;
-    let shareText = SHARE_TEXT;
-    let shortenError: string | undefined;
-
-    if (getShortenedUrl) {
-      setShortening(true);
-      try {
-        const result = await getShortenedUrl(longUrl);
-        if (result.ok) {
-          shareUrl = result.shortUrl;
-          shareText = buildShareText(selectedTtl, selectedTtlLabel);
-        } else {
-          // Shortening failed — we will NOT silently fall back to the long URL
-          // for Web Share. Show the modal with the error so the user can decide.
-          shortenError = getShortenModalMessage(result.error);
-          shareUrl = longUrl;
-        }
-      } finally {
-        setShortening(false);
-      }
-
-      if (shortenError) {
-        // Do not invoke navigator.share with a silently-substituted long URL.
-        openModal(longUrl, shortenError);
-        return;
-      }
-    }
-
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: SHARE_TITLE, text: shareText, url: shareUrl });
-      } catch (err) {
-        if (err instanceof Error && err.name !== 'AbortError') {
-          openModal(shareUrl);
-        }
-      }
-    } else {
-      openModal(shareUrl);
-    }
-  }, [connected, getShareUrl, getShortenedUrl, openModal, selectedTtl, selectedTtlLabel]);
-
-  const handleCopy = useCallback(() => {
-    if (!modal.open) return;
-    navigator.clipboard.writeText(modal.url).then(() => {
-      setCopied(true);
-      setCopyError(false);
-      setTimeout(() => setCopied(false), 2000);
-    }).catch(() => {
-      setCopyError(true);
-    });
-  }, [modal]);
-
-  const handleClose = useCallback(() => {
-    setModal({ open: false });
-    setCopied(false);
-    setCopyError(false);
-  }, []);
+  const share = useConnectedShare({
+    getShareUrl,
+    getShortenedUrl,
+    selectedTtl,
+    selectedTtlLabel,
+  });
 
   const updateTooltipPos = useCallback(() => {
     if (!wrapperRef.current) return;
@@ -245,11 +112,11 @@ export default function ShareButton({
         >
           <button
             className={`share-btn${!connected ? ' share-btn-disabled' : ''}`}
-            onClick={handleShare}
-            disabled={!connected || shortening}
-            aria-label={shortening ? 'Preparing share link…' : 'Share map'}
+            onClick={share.handleShare}
+            disabled={!connected || share.busy}
+            aria-label={share.busy ? 'Preparing share link…' : 'Share map'}
           >
-            {shortening ? '⏳ Preparing…' : '🔗 Share'}
+            {share.busy ? '⏳ Preparing…' : '🔗 Share'}
           </button>
         </div>
 
@@ -280,56 +147,13 @@ export default function ShareButton({
         document.body,
       )}
 
-      {modal.open && (
-        <div className="share-modal-overlay" onClick={handleClose}>
-          <div
-            className="share-modal"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Share link"
-          >
-            <h2>Share this map</h2>
-
-            {modal.shortenError && (
-              <p className="share-modal-shorten-error">
-                {modal.shortenError}
-              </p>
-            )}
-
-            <p>{modal.shortenError ? 'Copy the original link to share:' : 'Copy the link below to share your map:'}</p>
-
-            <div className="share-modal-url-row">
-              <input
-                ref={urlInputRef}
-                className="share-modal-url-input"
-                type="text"
-                readOnly
-                value={modal.url}
-                onFocus={(e) => e.target.select()}
-                aria-label="Shareable URL"
-              />
-              <button className="share-modal-copy-btn" onClick={handleCopy}>
-                {copied ? '✓ Copied' : 'Copy'}
-              </button>
-            </div>
-
-            {copyError && (
-              <p className="share-modal-copy-error">
-                Could not copy automatically — please select the URL above and copy it manually.
-              </p>
-            )}
-
-            <button
-              className="share-modal-close-btn"
-              onClick={handleClose}
-              aria-label="Close share dialog"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+      <ShareUrlModal
+        modal={share.modal}
+        copied={share.copied}
+        copyError={share.copyError}
+        onCopy={share.handleCopy}
+        onClose={share.handleClose}
+      />
 
       {!connected && sheetOpen && createPortal(
         <div
