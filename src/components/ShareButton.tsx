@@ -14,6 +14,8 @@ import {
 interface Props {
   connected: boolean;
   getShareUrl: () => string;
+  selectedTtl?: string;
+  selectedTtlLabel?: string;
   /**
    * When provided the button will shorten the URL before sharing.
    * If shortening fails the modal opens with the original long URL and an
@@ -26,6 +28,60 @@ interface Props {
 const SHARE_TITLE = 'Leafspots 🍃🍺';
 const SHARE_TEXT = 'Draw, mark, and share the places you love';
 
+function parseTtlToMs(ttl: string): number | null {
+  const match = ttl.match(/^(\d+)([mhdw])$/);
+  if (!match) return null;
+
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+
+  switch (match[2]) {
+    case 'm': return amount * 60_000;
+    case 'h': return amount * 3_600_000;
+    case 'd': return amount * 86_400_000;
+    case 'w': return amount * 604_800_000;
+    default: return null;
+  }
+}
+
+function formatTtlLabel(ttl: string, ttlLabel?: string): string {
+  const parsedMs = parseTtlToMs(ttl);
+  if (parsedMs === null) {
+    return ttlLabel?.trim() || ttl;
+  }
+
+  const match = ttl.match(/^(\d+)([mhdw])$/);
+  if (!match) return ttlLabel?.trim() || ttl;
+
+  const amount = Number(match[1]);
+  const unit =
+    match[2] === 'm' ? 'minute'
+      : match[2] === 'h' ? 'hour'
+        : match[2] === 'd' ? 'day'
+          : 'week';
+
+  return `${amount} ${unit}${amount === 1 ? '' : 's'}`;
+}
+
+function formatUtcTimestamp(date: Date): string {
+  return `${date.toISOString().slice(0, 19).replace('T', ' ')} UTC`;
+}
+
+function buildShareText(selectedTtl?: string, selectedTtlLabel?: string): string {
+  if (!selectedTtl) return SHARE_TEXT;
+  if (selectedTtl === 'never') {
+    return `${SHARE_TEXT}. ♥`;
+  }
+
+  const ttlMs = parseTtlToMs(selectedTtl);
+  if (ttlMs === null) return SHARE_TEXT;
+
+  const expiresAt = new Date(Date.now() + ttlMs);
+  const ttlText = formatTtlLabel(selectedTtl, selectedTtlLabel);
+
+  return `${SHARE_TEXT}. This short link expires in ${ttlText} at ${formatUtcTimestamp(expiresAt)}.`;
+}
+
 type ModalState =
   | { open: false }
   | { open: true; url: string; shortenError?: string };
@@ -36,6 +92,8 @@ const DISABLED_SHEET_TITLE_ID = 'share-disabled-sheet-title';
 export default function ShareButton({
   connected,
   getShareUrl,
+  selectedTtl,
+  selectedTtlLabel,
   getShortenedUrl,
   onOpenSidebar,
 }: Props) {
@@ -68,6 +126,7 @@ export default function ShareButton({
     const longUrl = getShareUrl();
 
     let shareUrl = longUrl;
+    let shareText = SHARE_TEXT;
     let shortenError: string | undefined;
 
     if (getShortenedUrl) {
@@ -76,6 +135,7 @@ export default function ShareButton({
         const result = await getShortenedUrl(longUrl);
         if (result.ok) {
           shareUrl = result.shortUrl;
+          shareText = buildShareText(selectedTtl, selectedTtlLabel);
         } else {
           // Shortening failed — we will NOT silently fall back to the long URL
           // for Web Share. Show the modal with the error so the user can decide.
@@ -95,7 +155,7 @@ export default function ShareButton({
 
     if (navigator.share) {
       try {
-        await navigator.share({ title: SHARE_TITLE, text: SHARE_TEXT, url: shareUrl });
+        await navigator.share({ title: SHARE_TITLE, text: shareText, url: shareUrl });
       } catch (err) {
         if (err instanceof Error && err.name !== 'AbortError') {
           openModal(shareUrl);
@@ -104,7 +164,7 @@ export default function ShareButton({
     } else {
       openModal(shareUrl);
     }
-  }, [connected, getShareUrl, getShortenedUrl, openModal]);
+  }, [connected, getShareUrl, getShortenedUrl, openModal, selectedTtl, selectedTtlLabel]);
 
   const handleCopy = useCallback(() => {
     if (!modal.open) return;

@@ -70,6 +70,10 @@ function App() {
     return opts.some((o) => o.value === selectedTtl) ? selectedTtl : opts[0].value;
   }, [leaflet.capabilities, selectedTtl]);
 
+  const effectiveSelectedTtlLabel = useMemo(() => {
+    return leaflet.capabilities?.ttlOptions.find((opt) => opt.value === effectiveSelectedTtl)?.label;
+  }, [effectiveSelectedTtl, leaflet.capabilities]);
+
   // Draw mode and pin mode are mutually exclusive
   const handleToggleDrawMode = useCallback(() => {
     if (pinMode) setPinMode(false);
@@ -338,6 +342,8 @@ function App() {
               <ShareButton
                 connected={isConnected}
                 getShareUrl={getShareUrl}
+                selectedTtl={shorteningEnabled ? effectiveSelectedTtl : undefined}
+                selectedTtlLabel={shorteningEnabled ? effectiveSelectedTtlLabel : undefined}
                 getShortenedUrl={shorteningEnabled ? getShortenedUrl : undefined}
                 onOpenSidebar={handleOpenSidebar}
               />
