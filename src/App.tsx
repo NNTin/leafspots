@@ -1,20 +1,26 @@
-import { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import type { Coordinates } from './utils/distance';
 import MapView from './components/MapView';
 import LocationInput from './components/LocationInput';
 import DrawingControls from './components/DrawingControls';
 import ShareButton from './components/ShareButton';
+import NavShareButton from './components/NavShareButton';
+import LeafletPanel from './components/LeafletPanel';
 import SidebarSocialIcons from './components/SidebarSocialIcons';
 import type { MenuItem } from './components/OverflowMenuBar';
 import { useDrawing } from './hooks/useDrawing';
 import { usePins } from './hooks/usePins';
 import { useOrientation } from './hooks/useOrientation';
+import { useLeafletConnection } from './hooks/useLeafletConnection';
 import { loadStateFromUrl, buildShareUrl } from './utils/urlState';
+import { shortenUrl } from './lib/leaflet-client';
 import type { MapState } from './utils/urlState';
 import './App.css';
 
 const BAVARIA_CENTER: [number, number] = [48.79, 11.5];
 const DEFAULT_ZOOM = 8;
+type ShareToastTone = 'success' | 'error';
+type ShareToast = { message: string; tone: ShareToastTone } | null;
 
 // Read any saved state from the URL once at module load time
 const urlState = loadStateFromUrl();
@@ -27,7 +33,7 @@ function App() {
   const orientation = useOrientation();
   const [strokeColor, setStrokeColor] = useState('#e53935');
   const [strokeWidth, setStrokeWidth] = useState(4);
-  const [shareMessage, setShareMessage] = useState('');
+  const [shareToast, setShareToast] = useState<ShareToast>(null);
   const [pinMode, setPinMode] = useState(false);
   const [pinColor, setPinColor] = useState('#e53935');
   const [overflowItems, setOverflowItems] = useState<MenuItem[]>([]);
@@ -35,11 +41,13 @@ function App() {
   const [editingPinId, setEditingPinId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
+  const [selectedTtl, setSelectedTtl] = useState('5m');
 
   const headerRef = useRef<HTMLElement>(null);
   const headerLeftRef = useRef<HTMLDivElement>(null);
   const fullTitleMeasureRef = useRef<HTMLSpanElement>(null);
   const editTitleRef = useRef<HTMLInputElement>(null);
+  const shareToastTimeoutRef = useRef<number | null>(null);
 
   // Track current map view via refs (no re-render needed)
   const mapCenterRef = useRef<[number, number]>(urlState?.center ?? BAVARIA_CENTER);
@@ -53,6 +61,18 @@ function App() {
       id: crypto.randomUUID(), lat, lng, color, title: title ?? '', description: description ?? '',
     })) ?? [],
   );
+
+  const leaflet = useLeafletConnection();
+
+  const effectiveSelectedTtl = useMemo(() => {
+    const opts = leaflet.capabilities?.ttlOptions;
+    if (!opts || opts.length === 0) return selectedTtl;
+    return opts.some((o) => o.value === selectedTtl) ? selectedTtl : opts[0].value;
+  }, [leaflet.capabilities, selectedTtl]);
+
+  const effectiveSelectedTtlLabel = useMemo(() => {
+    return leaflet.capabilities?.ttlOptions.find((opt) => opt.value === effectiveSelectedTtl)?.label;
+  }, [effectiveSelectedTtl, leaflet.capabilities]);
 
   // Draw mode and pin mode are mutually exclusive
   const handleToggleDrawMode = useCallback(() => {
@@ -89,25 +109,23 @@ function App() {
     mapZoomRef.current = zoom;
   }, []);
 
-  const handleExport = useCallback(() => {
-    const state: MapState = {
-      center: mapCenterRef.current,
-      zoom: mapZoomRef.current,
-      strokes,
-      pin: userLocation ? [userLocation.lat, userLocation.lng] : null,
-      pins: pins.map(({ lat, lng, color, title, description }) => [lat, lng, color, title, description]),
-    };
-    const url = buildShareUrl(state);
-    navigator.clipboard.writeText(url).then(() => {
-      setShareMessage('✓ Link copied!');
-      setTimeout(() => setShareMessage(''), 2000);
-    }).catch(() => {
-      // Clipboard unavailable — update address bar so user can copy manually
-      window.history.replaceState(null, '', url);
-      setShareMessage('URL updated — copy from address bar');
-      setTimeout(() => setShareMessage(''), 4000);
-    });
-  }, [strokes, userLocation, pins]);
+  const showShareMessage = useCallback((message: string, tone: ShareToastTone = 'success') => {
+    if (shareToastTimeoutRef.current !== null) {
+      window.clearTimeout(shareToastTimeoutRef.current);
+    }
+
+    setShareToast({ message, tone });
+    shareToastTimeoutRef.current = window.setTimeout(() => {
+      setShareToast(null);
+      shareToastTimeoutRef.current = null;
+    }, tone === 'error' || message.includes('URL updated') ? 4000 : 2000);
+  }, []);
+
+  useEffect(() => () => {
+    if (shareToastTimeoutRef.current !== null) {
+      window.clearTimeout(shareToastTimeoutRef.current);
+    }
+  }, []);
 
   const recalculateTitle = useCallback(() => {
     const headerEl = headerRef.current;
@@ -155,7 +173,10 @@ function App() {
   }, [overflowItems.length]);
 
   useLayoutEffect(() => {
-    recalculateTitle();
+    const frameId = window.requestAnimationFrame(() => {
+      recalculateTitle();
+    });
+    return () => window.cancelAnimationFrame(frameId);
   }, [recalculateTitle]);
 
   useEffect(() => {
@@ -192,6 +213,21 @@ function App() {
     return buildShareUrl(state);
   }, [strokes, userLocation, pins]);
 
+  // Only wire the shortener when the user is connected and shortening is allowed.
+  const isConnected =
+    leaflet.connectionState === 'anonymous' || leaflet.connectionState === 'authenticated';
+  const shorteningEnabled =
+    isConnected && (leaflet.capabilities?.shortenAllowed ?? false);
+
+  const getShortenedUrl = useCallback(
+    (longUrl: string) => shortenUrl(longUrl, effectiveSelectedTtl),
+    [effectiveSelectedTtl],
+  );
+
+  const handleOpenSidebar = useCallback(() => {
+    setSidebarOpen(true);
+  }, []);
+
   return (
     <div className="app">
       <header ref={headerRef} className="app-header">
@@ -213,7 +249,6 @@ function App() {
             onToggleDrawMode={handleToggleDrawMode}
             onUndo={undoLastStroke}
             onClear={clearStrokes}
-            onExport={handleExport}
             strokeColor={strokeColor}
             strokeWidth={strokeWidth}
             onColorChange={setStrokeColor}
@@ -224,6 +259,17 @@ function App() {
             onTogglePinMode={handleTogglePinMode}
             onClearPins={clearPins}
             onPinColorChange={setPinColor}
+            shareControl={(
+              <NavShareButton
+                connected={isConnected}
+                getShareUrl={getShareUrl}
+                selectedTtl={shorteningEnabled ? effectiveSelectedTtl : undefined}
+                selectedTtlLabel={shorteningEnabled ? effectiveSelectedTtlLabel : undefined}
+                getShortenedUrl={shorteningEnabled ? getShortenedUrl : undefined}
+                onCopied={showShareMessage}
+                onOpenSidebar={handleOpenSidebar}
+              />
+            )}
             onOverflowChange={setOverflowItems}
           />
         </div>
@@ -234,9 +280,13 @@ function App() {
         </span>
       </header>
 
-      {shareMessage && (
-        <div className="toast-notification" role="status" aria-live="polite">
-          {shareMessage}
+      {shareToast && (
+        <div
+          className={`toast-notification toast-${shareToast.tone}`}
+          role={shareToast.tone === 'error' ? 'alert' : 'status'}
+          aria-live={shareToast.tone === 'error' ? 'assertive' : 'polite'}
+        >
+          {shareToast.message}
         </div>
       )}
 
@@ -291,8 +341,20 @@ function App() {
               onLocationChange={setUserLocation}
             />
             <div className="share-panel">
-              <ShareButton getShareUrl={getShareUrl} />
+              <ShareButton
+                connected={isConnected}
+                getShareUrl={getShareUrl}
+                selectedTtl={shorteningEnabled ? effectiveSelectedTtl : undefined}
+                selectedTtlLabel={shorteningEnabled ? effectiveSelectedTtlLabel : undefined}
+                getShortenedUrl={shorteningEnabled ? getShortenedUrl : undefined}
+                onOpenSidebar={handleOpenSidebar}
+              />
             </div>
+            <LeafletPanel
+              {...leaflet}
+              selectedTtl={effectiveSelectedTtl}
+              onTtlChange={setSelectedTtl}
+            />
             {orientation === 'portrait' ? (
               <div className="sidebar-rotate-message" role="status">
                 🔄 Rotate your phone to horizontal mode for a better experience

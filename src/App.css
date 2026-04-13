@@ -6,7 +6,7 @@
   height: 100dvh; /* Dynamic viewport height – keeps layout within the visible area on mobile as browser chrome shows/hides */
   width: 100vw;
   overflow: hidden;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--app-font-family);
 }
 
 .app-header {
@@ -72,6 +72,11 @@
   font-weight: 600;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
   max-width: min(90vw, 360px);
+}
+
+.toast-notification.toast-error {
+  background: rgba(183, 28, 28, 0.96);
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
 @media (max-width: 767px) {
@@ -509,6 +514,109 @@
 .share-btn:hover {
   background: #1b5e20;
 }
+.share-btn:disabled {
+  cursor: not-allowed;
+}
+
+.share-btn-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.share-btn-wrapper {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.share-btn-disabled {
+  background: #b9cbb9;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.share-btn-disabled:hover {
+  background: #b9cbb9;
+}
+
+.share-help-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid #c8e6c9;
+  background: #f1f8f2;
+  color: #2e7d32;
+  font-size: 1rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.share-help-info-btn:hover {
+  background: #e8f5e9;
+}
+
+.share-help-info-btn:focus-visible {
+  outline: 2px solid #2e7d32;
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .share-help-info-btn {
+    display: none;
+  }
+}
+
+.share-help-tooltip {
+  position: fixed;
+  z-index: 2100;
+  width: 248px;
+  background: #fff;
+  border: 1px solid #c8e6c9;
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
+  pointer-events: none;
+}
+
+.share-help-tooltip::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 14px;
+  width: 9px;
+  height: 9px;
+  background: #fff;
+  border: 1px solid #c8e6c9;
+  border-bottom: none;
+  border-right: none;
+  transform: rotate(45deg);
+}
+
+.share-help-tooltip-title {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #1b5e20;
+}
+
+.share-help-tooltip-body,
+.share-help-tooltip-note {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #444;
+  line-height: 1.45;
+}
+
+.share-help-tooltip-note {
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid #e8f5e9;
+  color: #555;
+}
 
 /* ── Sidebar social links ───────────────────────────────── */
 .social-panel {
@@ -654,6 +762,194 @@
   margin: 0;
   font-size: 0.8rem;
   color: #c62828;
+}
+
+.share-modal-shorten-error {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #c62828;
+  background: #fff5f5;
+  border: 1px solid #ffcdd2;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.share-help-overlay,
+.share-upsell-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 2000;
+}
+
+.share-help-overlay {
+  display: flex;
+  align-items: flex-end;
+}
+
+.share-help-sheet {
+  width: 100%;
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  padding: 20px 20px 28px;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.share-help-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.share-help-sheet-header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #1b5e20;
+}
+
+.share-help-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -10px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+}
+
+.share-help-close-btn:hover {
+  background: #f0f0f0;
+}
+
+.share-help-close-btn:focus-visible {
+  outline: 2px solid #2e7d32;
+  outline-offset: 2px;
+}
+
+.share-help-sheet-body,
+.share-help-sheet-note {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #444;
+  line-height: 1.5;
+}
+
+.share-help-sheet-benefit {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #2e7d32;
+  line-height: 1.5;
+  background: #f1f8f2;
+  border-left: 3px solid #81c784;
+  border-radius: 0 6px 6px 0;
+  padding: 8px 10px;
+}
+
+.share-help-sheet-steps {
+  margin: 0;
+  padding-left: 20px;
+  color: #444;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.share-help-sheet-actions,
+.share-upsell-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.share-help-primary-btn,
+.share-upsell-btn-primary {
+  flex: 1;
+  padding: 9px 14px;
+  background: #2e7d32;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.share-help-primary-btn:hover,
+.share-upsell-btn-primary:hover {
+  background: #1b5e20;
+}
+
+.share-help-ghost-btn,
+.share-upsell-btn-ghost {
+  flex: 1;
+  padding: 9px 14px;
+  background: transparent;
+  color: #555;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.share-help-ghost-btn:hover,
+.share-upsell-btn-ghost:hover {
+  background: #f0f0f0;
+}
+
+.share-upsell-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.share-upsell-modal {
+  width: 100%;
+  max-width: 420px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.share-upsell-modal h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #1b5e20;
+}
+
+.share-upsell-body,
+.share-upsell-benefit {
+  margin: 0;
+  color: #555;
+  line-height: 1.5;
+}
+
+.share-upsell-benefit {
+  font-size: 0.85rem;
+  color: #2e7d32;
+  background: #f1f8f2;
+  border-left: 3px solid #81c784;
+  border-radius: 0 6px 6px 0;
+  padding: 8px 10px;
+}
+
+.share-upsell-steps {
+  margin: 0;
+  padding-left: 20px;
+  color: #444;
+  line-height: 1.6;
 }
 
 /* ── Edit pin panel ──────────────────────────────────────── */
@@ -823,4 +1119,376 @@
 .social-icon-link:hover {
   color: #2e7d32;
   background: rgba(46, 125, 50, 0.08);
+}
+
+/* ── Leaflet shortener panel ─────────────────────────────── */
+.leaflet-panel {
+  padding: 16px;
+  border-bottom: 1px solid #ddd;
+}
+
+.leaflet-panel h2 {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #333;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Auth-return failure banner */
+.leaflet-auth-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  color: #5d4037;
+  margin-bottom: 10px;
+}
+
+.leaflet-auth-banner-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #8d6e63;
+  font-size: 0.75rem;
+  padding: 0 2px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.leaflet-auth-banner-close:hover {
+  color: #4e342e;
+}
+
+/* Status row */
+.leaflet-status-row {
+  margin-bottom: 10px;
+}
+
+.leaflet-status-badge {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+
+.leaflet-status-ok {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.leaflet-status-busy {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.leaflet-status-warn {
+  background: #fff8e1;
+  color: #e65100;
+}
+
+.leaflet-status-error {
+  background: #ffebee;
+  color: #c62828;
+}
+
+/* Hint text */
+.leaflet-hint {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  color: #666;
+  line-height: 1.4;
+}
+
+/* TTL selector */
+.leaflet-ttl-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.leaflet-ttl-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #555;
+  white-space: nowrap;
+}
+
+.leaflet-ttl-select {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  background: white;
+  color: #333;
+  cursor: pointer;
+}
+.leaflet-ttl-select:focus {
+  outline: 2px solid #2e7d32;
+  outline-offset: 1px;
+}
+
+/* Action buttons */
+.leaflet-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.leaflet-btn {
+  width: 100%;
+  padding: 7px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  text-align: center;
+}
+
+.leaflet-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.leaflet-btn-primary {
+  background: #2e7d32;
+  color: white;
+  border: none;
+}
+.leaflet-btn-primary:hover:not(:disabled) {
+  background: #1b5e20;
+}
+
+.leaflet-btn-secondary {
+  background: transparent;
+  color: #2e7d32;
+  border: 1.5px solid #2e7d32;
+}
+.leaflet-btn-secondary:hover:not(:disabled) {
+  background: #e8f5e9;
+}
+
+.leaflet-btn-ghost {
+  background: transparent;
+  color: #555;
+  border: 1px solid #bbb;
+}
+.leaflet-btn-ghost:hover:not(:disabled) {
+  background: #f0f0f0;
+}
+
+/* Disclaimer */
+.leaflet-disclaimer {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #888;
+  line-height: 1.4;
+}
+
+.leaflet-disclaimer-link {
+  color: #2e7d32;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+.leaflet-disclaimer-link:hover {
+  color: #1b5e20;
+}
+
+/* ── Connection status info ──────────────────────────────── */
+.leaflet-status-info-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Subtle hover affordance on the badge — desktop only */
+@media (hover: hover) {
+  .leaflet-status-hoverable {
+    cursor: help;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+
+  /* Hide info icon on pointer/hover devices */
+  .leaflet-status-info-btn {
+    display: none;
+  }
+}
+
+/* Info icon button — touch devices only */
+.leaflet-status-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 44×44 touch target via negative margin + padding */
+  width: 44px;
+  height: 44px;
+  margin: -10px -10px -10px 0;
+  padding: 10px;
+  background: transparent;
+  border: none;
+  color: #2e7d32;
+  font-size: 1rem;
+  cursor: pointer;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.leaflet-status-info-btn:hover {
+  background: rgba(46, 125, 50, 0.1);
+}
+.leaflet-status-info-btn:focus-visible {
+  outline: 2px solid #2e7d32;
+  outline-offset: 2px;
+}
+
+/* Tooltip — rendered via portal, position: fixed */
+.leaflet-status-tooltip {
+  position: fixed;
+  z-index: 2100;
+  width: 232px;
+  background: #fff;
+  border: 1px solid #c8e6c9;
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
+  pointer-events: none;
+}
+
+/* Arrow pointing up */
+.leaflet-status-tooltip::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 14px;
+  width: 9px;
+  height: 9px;
+  background: #fff;
+  border: 1px solid #c8e6c9;
+  border-bottom: none;
+  border-right: none;
+  transform: rotate(45deg);
+}
+
+.leaflet-status-tooltip-title {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #1b5e20;
+  margin-bottom: 5px;
+}
+
+.leaflet-status-tooltip-body {
+  margin: 0 0 5px;
+  font-size: 0.78rem;
+  color: #444;
+  line-height: 1.45;
+}
+
+.leaflet-status-tooltip-ttl {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #555;
+  line-height: 1.45;
+  padding-top: 5px;
+  border-top: 1px solid #e8f5e9;
+}
+
+/* Bottom sheet overlay */
+.leaflet-info-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 2000;
+  display: flex;
+  align-items: flex-end;
+  animation: leaflet-fade-in 0.15s ease;
+}
+
+@keyframes leaflet-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.leaflet-info-sheet {
+  width: 100%;
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  padding: 20px 20px 36px;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: leaflet-sheet-up 0.22s ease;
+}
+
+@keyframes leaflet-sheet-up {
+  from { transform: translateY(60px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.leaflet-info-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.leaflet-info-sheet-badge {
+  /* inherits leaflet-status-ok / leaflet-status-busy etc. */
+}
+
+.leaflet-info-sheet-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -10px;
+  background: transparent;
+  border: none;
+  color: #666;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.leaflet-info-sheet-close:hover {
+  background: #f0f0f0;
+}
+.leaflet-info-sheet-close:focus-visible {
+  outline: 2px solid #2e7d32;
+  outline-offset: 2px;
+}
+
+.leaflet-info-sheet-desc {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #333;
+  line-height: 1.5;
+}
+
+.leaflet-info-sheet-ttl {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #2e7d32;
+  line-height: 1.5;
+  background: #f1f8f2;
+  border-left: 3px solid #81c784;
+  border-radius: 0 6px 6px 0;
+  padding: 8px 10px;
 }
