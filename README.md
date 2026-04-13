@@ -21,6 +21,7 @@ https://nntin.xyz/leafspots/
 
 - Leafspots is a Single Page Application (SPA) with no backend.
 - No user data is collected or stored on a server.
+    - Optional: the URL shortener service Leaflet stores URL-shortening data. It must be explicitly opted in. [Website](https://nntin.xyz/leaflet/) - [GitHub](https://github.com/NNTin/leaflet)
 - Location and map state are encoded directly into the URL query parameter (`?state=`).
 - Only people with the shared link can access that encoded location/map information.
 - You are encouraged to fork this project and adapt it to your own needs.
