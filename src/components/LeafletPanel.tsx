@@ -57,18 +57,11 @@ function formatTtlList(ttlOptions: LeafletCapabilities['ttlOptions']): string {
 
 function getTtlNote(
   capabilities: LeafletCapabilities | null,
-  state: ConnectionState,
 ): string {
   const ttlList = capabilities ? formatTtlList(capabilities.ttlOptions) : '';
 
   if (!ttlList) {
-    return state === 'anonymous'
-      ? 'Short links are available after you connect. Sign in to Leaflet for more options.'
-      : 'Short links are available after you connect.';
-  }
-
-  if (state === 'anonymous') {
-    return `Short links can expire after: ${ttlList}. Sign in to Leaflet for more options.`;
+    return 'Short links are available after you connect.';
   }
 
   return `Short links can expire after: ${ttlList}.`;
@@ -83,14 +76,14 @@ function getStatusInfo(
     return {
       title: 'Connected anonymously',
       description: 'Using Leaflet URL shortener. Links are tied to your current session. Sign in to get longer expiration times and higher rate limits.',
-      ttlNote: getTtlNote(capabilities, state),
+      ttlNote: getTtlNote(capabilities),
     };
   }
   if (state === 'authenticated') {
     return {
       title: `Connected as ${username ?? ''}`,
       description: 'Using Leaflet URL shortener. Links are linked to your account and managed with your saved settings.',
-      ttlNote: getTtlNote(capabilities, state),
+      ttlNote: getTtlNote(capabilities),
     };
   }
   return null;
