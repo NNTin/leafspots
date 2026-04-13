@@ -74,6 +74,11 @@
   max-width: min(90vw, 360px);
 }
 
+.toast-notification.toast-error {
+  background: rgba(183, 28, 28, 0.96);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
 @media (max-width: 767px) {
   .toast-notification {
     top: auto;

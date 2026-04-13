@@ -2,10 +2,14 @@ import { useState, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { ShortenResult } from '../lib/leaflet-client';
 import {
+  getShortenCopiedFallbackMessage,
+  getShortenManualFallbackMessage,
   NAV_SHARE_UPSELL_BODY,
   SHARE_CONNECT_BENEFIT,
   SHARE_CONNECT_STEPS,
 } from './shareMessaging';
+
+type CopyFeedbackTone = 'success' | 'error';
 
 interface Props {
   connected: boolean;
@@ -16,7 +20,7 @@ interface Props {
    * immediately and show the connect-upsell modal afterwards.
    */
   getShortenedUrl?: (longUrl: string) => Promise<ShortenResult>;
-  onCopied?: (message: string) => void;
+  onCopied?: (message: string, tone?: CopyFeedbackTone) => void;
   onOpenSidebar?: () => void;
 }
 
@@ -44,7 +48,9 @@ export default function NavShareButton({
   const handleClick = useCallback(async () => {
     const longUrl = getShareUrl();
     let toCopy = longUrl;
-    const copyMsg = 'Link copied';
+    let copyMsg = 'Link copied';
+    let copyTone: CopyFeedbackTone = 'success';
+    let manualCopyMsg = 'URL updated — copy from address bar';
 
     if (connected && getShortenedUrl) {
       setBusy(true);
@@ -52,8 +58,11 @@ export default function NavShareButton({
         const result = await getShortenedUrl(longUrl);
         if (result.ok) {
           toCopy = result.shortUrl;
+        } else {
+          copyMsg = getShortenCopiedFallbackMessage(result.error);
+          manualCopyMsg = getShortenManualFallbackMessage(result.error);
+          copyTone = 'error';
         }
-        // shortening failed — silently fall back to long URL for nav copy
       } finally {
         setBusy(false);
       }
@@ -61,10 +70,10 @@ export default function NavShareButton({
 
     try {
       await navigator.clipboard.writeText(toCopy);
-      onCopied?.(copyMsg);
+      onCopied?.(copyMsg, copyTone);
     } catch {
       window.history.replaceState(null, '', toCopy);
-      onCopied?.('URL updated — copy from address bar');
+      onCopied?.(manualCopyMsg, copyTone);
     }
 
     if (!connected) {

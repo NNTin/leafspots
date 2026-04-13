@@ -19,6 +19,8 @@ import './App.css';
 
 const BAVARIA_CENTER: [number, number] = [48.79, 11.5];
 const DEFAULT_ZOOM = 8;
+type ShareToastTone = 'success' | 'error';
+type ShareToast = { message: string; tone: ShareToastTone } | null;
 
 // Read any saved state from the URL once at module load time
 const urlState = loadStateFromUrl();
@@ -31,7 +33,7 @@ function App() {
   const orientation = useOrientation();
   const [strokeColor, setStrokeColor] = useState('#e53935');
   const [strokeWidth, setStrokeWidth] = useState(4);
-  const [shareMessage, setShareMessage] = useState('');
+  const [shareToast, setShareToast] = useState<ShareToast>(null);
   const [pinMode, setPinMode] = useState(false);
   const [pinColor, setPinColor] = useState('#e53935');
   const [overflowItems, setOverflowItems] = useState<MenuItem[]>([]);
@@ -103,16 +105,16 @@ function App() {
     mapZoomRef.current = zoom;
   }, []);
 
-  const showShareMessage = useCallback((message: string) => {
+  const showShareMessage = useCallback((message: string, tone: ShareToastTone = 'success') => {
     if (shareToastTimeoutRef.current !== null) {
       window.clearTimeout(shareToastTimeoutRef.current);
     }
 
-    setShareMessage(message);
+    setShareToast({ message, tone });
     shareToastTimeoutRef.current = window.setTimeout(() => {
-      setShareMessage('');
+      setShareToast(null);
       shareToastTimeoutRef.current = null;
-    }, message === 'URL updated — copy from address bar' ? 4000 : 2000);
+    }, tone === 'error' || message.includes('URL updated') ? 4000 : 2000);
   }, []);
 
   useEffect(() => () => {
@@ -272,9 +274,13 @@ function App() {
         </span>
       </header>
 
-      {shareMessage && (
-        <div className="toast-notification" role="status" aria-live="polite">
-          {shareMessage}
+      {shareToast && (
+        <div
+          className={`toast-notification toast-${shareToast.tone}`}
+          role={shareToast.tone === 'error' ? 'alert' : 'status'}
+          aria-live={shareToast.tone === 'error' ? 'assertive' : 'polite'}
+        >
+          {shareToast.message}
         </div>
       )}
 

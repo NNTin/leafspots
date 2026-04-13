@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { ShortenResult } from '../lib/leaflet-client';
 import {
+  getShortenModalMessage,
   SHARE_CONNECT_BENEFIT,
   SHARE_CONNECT_BODY,
   SHARE_CONNECT_INSTRUCTIONS,
@@ -77,7 +78,7 @@ export default function ShareButton({
         } else {
           // Shortening failed — we will NOT silently fall back to the long URL
           // for Web Share. Show the modal with the error so the user can decide.
-          shortenError = result.error.message;
+          shortenError = getShortenModalMessage(result.error);
           shareUrl = longUrl;
         }
       } finally {
@@ -231,7 +232,7 @@ export default function ShareButton({
 
             {modal.shortenError && (
               <p className="share-modal-shorten-error">
-                URL shortening failed: {modal.shortenError}. The original link is shown below.
+                {modal.shortenError}
               </p>
             )}
 
