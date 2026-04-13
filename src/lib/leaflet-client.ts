@@ -53,6 +53,14 @@ function getApiOrigin(): string {
   );
 }
 
+function getFrontendOrigin(): string {
+  const base =
+    (import.meta.env.VITE_LEAFLET_FRONTEND_ORIGIN as string | undefined) ||
+    'https://nntin.xyz/leaflet/';
+
+  return base.endsWith('/') ? base : `${base}/`;
+}
+
 function parseRetryAfter(res: Response): number | null {
   const val = res.headers.get('Retry-After');
   if (!val) return null;
@@ -211,9 +219,7 @@ export async function logoutLeafletSession(): Promise<void> {
 // ── Login URL ────────────────────────────────────────────────
 
 export function buildLeafletLoginUrl(returnTo: string): string {
-  const origin = getApiOrigin();
-  const base = origin || window.location.origin;
-  const url = new URL('/login', base);
+  const url = new URL('login', getFrontendOrigin());
   url.searchParams.set('returnTo', returnTo);
   return url.toString();
 }
