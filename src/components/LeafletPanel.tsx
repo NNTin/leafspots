@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { FiInfo } from 'react-icons/fi';
 import type { ConnectionState, LeafletConnectionState } from '../hooks/useLeafletConnection';
 import type { LeafletCapabilities } from '../lib/leaflet-client';
 
@@ -138,7 +139,7 @@ function ConnectionStatusInfo({
           aria-label={`${label} — tap for more info`}
           aria-haspopup="dialog"
         >
-          ⓘ
+          <FiInfo aria-hidden="true" focusable="false" />
         </button>
       </div>
 

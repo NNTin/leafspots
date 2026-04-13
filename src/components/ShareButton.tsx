@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { FiInfo } from 'react-icons/fi';
 import type { ShortenResult } from '../lib/leaflet-client';
 import {
   getShortenModalMessage,
@@ -200,7 +201,7 @@ export default function ShareButton({
             aria-label={`${SHARE_CONNECT_TITLE}. Tap for more info`}
             aria-haspopup="dialog"
           >
-            ⓘ
+            <FiInfo aria-hidden="true" focusable="false" />
           </button>
         )}
       </div>
