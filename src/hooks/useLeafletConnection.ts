@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   isLeafletOptedIn,
   setLeafletOptIn,
+  clearLeafletConnectionCaches,
   getLeafletSession,
   getLeafletCapabilities,
   logoutLeafletSession,
@@ -41,7 +42,7 @@ export function useLeafletConnection(): LeafletConnectionState {
   const isMounted = useRef(true);
   useEffect(() => () => { isMounted.current = false; }, []);
 
-  const applySessionResult = useCallback(async (result: SessionResult) => {
+  const applySessionResult = useCallback(async (result: SessionResult, options?: { force?: boolean }) => {
     if (!isMounted.current) return;
 
     switch (result.status) {
@@ -66,18 +67,18 @@ export function useLeafletConnection(): LeafletConnectionState {
     }
 
     if (result.status === 'anonymous' || result.status === 'authenticated') {
-      const caps = await getLeafletCapabilities();
+      const caps = await getLeafletCapabilities({ force: options?.force });
       if (isMounted.current) setCapabilities(caps);
     } else {
       setCapabilities(null);
     }
   }, []);
 
-  const refreshSession = useCallback(async () => {
+  const refreshSession = useCallback(async (options?: { force?: boolean }) => {
     if (!isLeafletOptedIn()) return;
     setConnectionState('connecting');
-    const result = await getLeafletSession();
-    if (isMounted.current) await applySessionResult(result);
+    const result = await getLeafletSession({ force: options?.force });
+    if (isMounted.current) await applySessionResult(result, options);
   }, [applySessionResult]);
 
   // On mount: check for auth-return param and restore session if opted in.
@@ -100,6 +101,7 @@ export function useLeafletConnection(): LeafletConnectionState {
     (mode: 'anonymous' | 'authenticated') => {
       setLeafletOptIn(true);
       if (mode === 'anonymous') {
+        clearLeafletConnectionCaches();
         refreshSession();
       } else {
         // Preserve full current URL (including hash state) as return target.
@@ -111,6 +113,7 @@ export function useLeafletConnection(): LeafletConnectionState {
 
   const disconnect = useCallback(() => {
     setLeafletOptIn(false);
+    clearLeafletConnectionCaches();
     setConnectionState('disconnected');
     setUsername(null);
     setCapabilities(null);
@@ -119,11 +122,11 @@ export function useLeafletConnection(): LeafletConnectionState {
 
   const logout = useCallback(async () => {
     await logoutLeafletSession();
-    if (isMounted.current) await refreshSession();
+    if (isMounted.current) await refreshSession({ force: true });
   }, [refreshSession]);
 
   const refresh = useCallback(async () => {
-    await refreshSession();
+    await refreshSession({ force: true });
   }, [refreshSession]);
 
   const clearAuthReturn = useCallback(() => {

@@ -14,7 +14,9 @@ export interface ShortenTtlOption {
 }
 
 export interface LeafletCapabilities {
+  anonymous?: boolean;
   authenticated: boolean;
+  role?: string;
   shortenAllowed: boolean;
   aliasingAllowed: boolean;
   neverAllowed: boolean;
@@ -37,6 +39,10 @@ const STORAGE_KEY = 'leaflet.optedIn';
 
 // ── CSRF token cache ────────────────────────────────────────
 let _csrfToken: string | null = null;
+let _sessionCache: SessionResult | null = null;
+let _sessionPromise: Promise<SessionResult> | null = null;
+let _capabilitiesCache: LeafletCapabilities | null | undefined;
+let _capabilitiesPromise: Promise<LeafletCapabilities | null> | null = null;
 
 // ── Helpers ─────────────────────────────────────────────────
 
@@ -96,37 +102,88 @@ function invalidateCsrfToken(): void {
   _csrfToken = null;
 }
 
+export function clearLeafletSessionCache(): void {
+  _sessionCache = null;
+  _sessionPromise = null;
+}
+
+export function clearLeafletCapabilitiesCache(): void {
+  _capabilitiesCache = undefined;
+  _capabilitiesPromise = null;
+}
+
+export function clearLeafletConnectionCaches(): void {
+  clearLeafletSessionCache();
+  clearLeafletCapabilitiesCache();
+}
+
 // ── Session ──────────────────────────────────────────────────
 
-export async function getLeafletSession(): Promise<SessionResult> {
-  try {
-    const res = await fetch(`${getApiOrigin()}/auth/me`, {
-      credentials: 'include',
-    });
-    if (res.status === 429) {
-      return { status: 'rate-limited', retryAfter: parseRetryAfter(res) };
+export async function getLeafletSession(options?: { force?: boolean }): Promise<SessionResult> {
+  if (!options?.force) {
+    if (_sessionCache !== null) return _sessionCache;
+    if (_sessionPromise) return _sessionPromise;
+  } else {
+    clearLeafletSessionCache();
+  }
+
+  _sessionPromise = (async () => {
+    try {
+      const res = await fetch(`${getApiOrigin()}/auth/me`, {
+        credentials: 'include',
+      });
+      if (res.status === 429) {
+        return { status: 'rate-limited', retryAfter: parseRetryAfter(res) } satisfies SessionResult;
+      }
+      if (!res.ok) return { status: 'unavailable' } satisfies SessionResult;
+      const user = (await res.json()) as { username: string } | null;
+      return user === null
+        ? ({ status: 'anonymous' } satisfies SessionResult)
+        : ({ status: 'authenticated', username: user.username } satisfies SessionResult);
+    } catch {
+      return { status: 'unavailable' } satisfies SessionResult;
     }
-    if (!res.ok) return { status: 'unavailable' };
-    const user = (await res.json()) as { username: string } | null;
-    return user === null
-      ? { status: 'anonymous' }
-      : { status: 'authenticated', username: user.username };
-  } catch {
-    return { status: 'unavailable' };
+  })();
+
+  try {
+    const result = await _sessionPromise;
+    _sessionCache = result;
+    return result;
+  } finally {
+    _sessionPromise = null;
   }
 }
 
 // ── Capabilities ─────────────────────────────────────────────
 
-export async function getLeafletCapabilities(): Promise<LeafletCapabilities | null> {
+export async function getLeafletCapabilities(
+  options?: { force?: boolean },
+): Promise<LeafletCapabilities | null> {
+  if (!options?.force) {
+    if (_capabilitiesCache !== undefined) return _capabilitiesCache;
+    if (_capabilitiesPromise) return _capabilitiesPromise;
+  } else {
+    clearLeafletCapabilitiesCache();
+  }
+
+  _capabilitiesPromise = (async () => {
+    try {
+      const res = await fetch(`${getApiOrigin()}/api/shorten/capabilities`, {
+        credentials: 'include',
+      });
+      if (!res.ok) return null;
+      return (await res.json()) as LeafletCapabilities;
+    } catch {
+      return null;
+    }
+  })();
+
   try {
-    const res = await fetch(`${getApiOrigin()}/api/shorten/capabilities`, {
-      credentials: 'include',
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as LeafletCapabilities;
-  } catch {
-    return null;
+    const result = await _capabilitiesPromise;
+    _capabilitiesCache = result;
+    return result;
+  } finally {
+    _capabilitiesPromise = null;
   }
 }
 
@@ -146,6 +203,8 @@ export async function logoutLeafletSession(): Promise<void> {
     invalidateCsrfToken();
   } catch {
     // logout is best-effort
+  } finally {
+    clearLeafletConnectionCaches();
   }
 }
 

@@ -9,7 +9,7 @@ interface Props extends LeafletConnectionState {
   onTtlChange: (ttl: string) => void;
 }
 
-const LEAFLET_SOURCE_URL = 'https://github.com/NNTin/leaflet';
+const LEAFLET_SOURCE_URL = 'https://nntin.xyz/leaflet/';
 
 function statusLabel(
   state: ConnectionState,
@@ -43,22 +43,54 @@ function statusClass(state: ConnectionState): string {
 const STATUS_TOOLTIP_ID = 'leaflet-status-tooltip';
 const INFO_SHEET_TITLE_ID = 'leaflet-info-sheet-title';
 
+function formatTtlList(ttlOptions: LeafletCapabilities['ttlOptions']): string {
+  const labels = ttlOptions
+    .map((opt) => opt.label.trim())
+    .filter(Boolean)
+    .map((label) => label === 'Never expire' ? 'never expire' : label);
+
+  if (labels.length === 0) return '';
+  if (labels.length === 1) return labels[0];
+  if (labels.length === 2) return `${labels[0]} or ${labels[1]}`;
+  return `${labels.slice(0, -1).join(', ')}, or ${labels.at(-1)}`;
+}
+
+function getTtlNote(
+  capabilities: LeafletCapabilities | null,
+  state: ConnectionState,
+): string {
+  const ttlList = capabilities ? formatTtlList(capabilities.ttlOptions) : '';
+
+  if (!ttlList) {
+    return state === 'anonymous'
+      ? 'Short links are available after you connect. Sign in to Leaflet for more options.'
+      : 'Short links are available after you connect.';
+  }
+
+  if (state === 'anonymous') {
+    return `Short links can expire after: ${ttlList}. Sign in to Leaflet for more options.`;
+  }
+
+  return `Short links can expire after: ${ttlList}.`;
+}
+
 function getStatusInfo(
   state: ConnectionState,
   username: string | null,
+  capabilities: LeafletCapabilities | null,
 ): { title: string; description: string; ttlNote: string } | null {
   if (state === 'anonymous') {
     return {
       title: 'Connected anonymously',
-      description: 'You are connected without an account. Your data is not linked to any profile.',
-      ttlNote: 'Short links can expire after: 5m, 1h, or 1d.',
+      description: 'Using Leaflet URL shortener. Links are tied to your current session. Sign in to get longer expiration times and higher rate limits.',
+      ttlNote: getTtlNote(capabilities, state),
     };
   }
   if (state === 'authenticated') {
     return {
       title: `Connected as ${username ?? ''}`,
-      description: 'You are signed in and your data is associated with your account.',
-      ttlNote: 'Short links can expire after: 5m, 1h, 1d, or 1w.',
+      description: 'Using Leaflet URL shortener. Links are linked to your account and managed with your saved settings.',
+      ttlNote: getTtlNote(capabilities, state),
     };
   }
   return null;
@@ -68,10 +100,12 @@ function ConnectionStatusInfo({
   connectionState,
   username,
   retryAfter,
+  capabilities,
 }: {
   connectionState: ConnectionState;
   username: string | null;
   retryAfter: number | null;
+  capabilities: LeafletCapabilities | null;
 }) {
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
@@ -79,7 +113,7 @@ function ConnectionStatusInfo({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const infoBtnRef = useRef<HTMLButtonElement>(null);
 
-  const info = getStatusInfo(connectionState, username);
+  const info = getStatusInfo(connectionState, username, capabilities);
 
   const updateTooltipPos = () => {
     if (!wrapperRef.current) return;
@@ -283,6 +317,7 @@ export default function LeafletPanel({
             connectionState={connectionState}
             username={username}
             retryAfter={retryAfter}
+            capabilities={capabilities}
           />
         </div>
       )}
