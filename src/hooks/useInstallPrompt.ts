@@ -14,7 +14,19 @@ export type InstallState =
 
 export function useInstallPrompt() {
   const [promptEvent, setPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
-  const [installState, setInstallState] = useState<InstallState>('hidden');
+  const [installState, setInstallState] = useState<InstallState>(() => {
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (navigator as unknown as { standalone?: boolean }).standalone === true;
+
+    if (isStandalone) return 'hidden';
+
+    const isIOS =
+      /iphone|ipad|ipod/i.test(navigator.userAgent) &&
+      !(window as unknown as { MSStream?: unknown }).MSStream;
+
+    return isIOS ? 'ios' : 'hidden';
+  });
 
   useEffect(() => {
     // Don't show banner if already running as an installed PWA
@@ -24,15 +36,11 @@ export function useInstallPrompt() {
 
     if (isStandalone) return;
 
-    // iOS Safari: no beforeinstallprompt event — show manual instructions
+    // iOS Safari: no beforeinstallprompt event — state is set in initializer
     const isIOS =
       /iphone|ipad|ipod/i.test(navigator.userAgent) &&
       !(window as unknown as { MSStream?: unknown }).MSStream;
-
-    if (isIOS) {
-      setInstallState('ios');
-      return;
-    }
+    if (isIOS) return;
 
     // Android / Chrome / Edge: capture the deferred prompt
     const handleBeforeInstall = (e: Event) => {
@@ -56,7 +64,7 @@ export function useInstallPrompt() {
     if (!promptEvent) return;
     await promptEvent.prompt();
     const { outcome } = await promptEvent.userChoice;
-    if (outcome === 'accepted') setInstallState('hidden');
+    if (outcome === 'accepted' || outcome === 'dismissed') setInstallState('hidden');
     setPromptEvent(null);
   };
 

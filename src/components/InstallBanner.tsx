@@ -15,7 +15,7 @@ export default function InstallBanner({ state, onInstall, onDismiss }: InstallBa
                Current placeholder just uses the app icon. Recommended size: 48×48 display px. */}
       <img
         className="install-banner-icon"
-        src="/icon-192.png"
+        src={`${import.meta.env.BASE_URL}icon-192.png`}
         alt="Leafspots icon"
         width={40}
         height={40}

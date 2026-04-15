@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { Coordinates } from '../utils/distance';
 
 type GpsState = 'idle' | 'loading' | 'success' | 'error';
@@ -9,13 +9,31 @@ interface GpsButtonProps {
 
 export default function GpsButton({ onLocationDetected }: GpsButtonProps) {
   const [state, setState] = useState<GpsState>('idle');
+  const resetTimeoutRef = useRef<number | null>(null);
+
+  const clearResetTimeout = useCallback(() => {
+    if (resetTimeoutRef.current !== null) {
+      window.clearTimeout(resetTimeoutRef.current);
+      resetTimeoutRef.current = null;
+    }
+  }, []);
+
+  const scheduleReset = useCallback((ms: number) => {
+    clearResetTimeout();
+    resetTimeoutRef.current = window.setTimeout(() => {
+      setState('idle');
+      resetTimeoutRef.current = null;
+    }, ms);
+  }, [clearResetTimeout]);
+
+  useEffect(() => clearResetTimeout, [clearResetTimeout]);
 
   const handleClick = useCallback(() => {
     if (state === 'loading') return;
 
     if (!navigator.geolocation) {
       setState('error');
-      setTimeout(() => setState('idle'), 2000);
+      scheduleReset(2000);
       return;
     }
 
@@ -24,15 +42,15 @@ export default function GpsButton({ onLocationDetected }: GpsButtonProps) {
       (pos) => {
         onLocationDetected({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setState('success');
-        setTimeout(() => setState('idle'), 1500);
+        scheduleReset(1500);
       },
       () => {
         setState('error');
-        setTimeout(() => setState('idle'), 2000);
+        scheduleReset(2000);
       },
       { enableHighAccuracy: true, timeout: 10000 },
     );
-  }, [state, onLocationDetected]);
+  }, [state, onLocationDetected, scheduleReset]);
 
   const label =
     state === 'loading' ? 'Locating…' :
