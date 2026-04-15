@@ -10,6 +10,8 @@ html, body, #root {
   margin: 0;
   padding: 0;
   height: 100%;
+  /* On iOS with viewport-fit=cover the safe-area-inset-* vars push content
+     away from the notch / home indicator automatically. */
   width: 100%;
   overflow: hidden;
 }

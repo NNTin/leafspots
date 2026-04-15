@@ -15,8 +15,9 @@
   justify-content: space-between;
   background: #2e7d32;
   color: white;
-  padding: 0 16px;
-  height: 52px;
+  /* Horizontal safe-area padding for notches in landscape; vertical for Dynamic Island */
+  padding: env(safe-area-inset-top) calc(16px + env(safe-area-inset-right)) 0 calc(16px + env(safe-area-inset-left));
+  height: calc(52px + env(safe-area-inset-top));
   flex-shrink: 0;
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
   gap: 8px;
@@ -284,6 +285,7 @@
 .map-container {
   flex: 1;
   overflow: hidden;
+  position: relative; /* needed for absolutely-positioned overlays like GpsButton */
 }
 
 /* ── Sidebar panels ──────────────────────────────────────── */
@@ -1491,4 +1493,166 @@
   border-left: 3px solid #81c784;
   border-radius: 0 6px 6px 0;
   padding: 8px 10px;
+}
+
+/* ── GPS floating button ─────────────────────────────────── */
+.gps-btn {
+  position: absolute;
+  /* Sit above Leaflet attribution (~28 px) with extra breathing room;
+     also clear the iOS home indicator via safe-area-inset-bottom. */
+  bottom: calc(40px + env(safe-area-inset-bottom));
+  right: calc(12px + env(safe-area-inset-right));
+  z-index: 900;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #fff;
+  border: none;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  color: #2e7d32;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s, transform 0.1s;
+  /* Prevent Leaflet click-through */
+  pointer-events: auto;
+}
+
+.gps-btn:hover {
+  background: #f1f8f2;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.gps-btn:active {
+  transform: scale(0.95);
+}
+
+.gps-btn--loading {
+  color: #888;
+  cursor: default;
+}
+
+.gps-btn--success {
+  background: #2e7d32;
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(46, 125, 50, 0.4);
+}
+
+.gps-btn--error {
+  background: #c62828;
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(198, 40, 40, 0.4);
+}
+
+/* Spinning ring shown while geolocation is in progress */
+@keyframes gps-spin {
+  to { transform: rotate(360deg); }
+}
+
+.gps-spinner {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border: 2.5px solid rgba(0, 0, 0, 0.1);
+  border-top-color: #2e7d32;
+  border-radius: 50%;
+  animation: gps-spin 0.75s linear infinite;
+}
+
+/* ── PWA Install banner ───────────────────────────────────── */
+.install-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+  padding-right: calc(16px + env(safe-area-inset-right));
+  box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.15);
+  border-top: 1px solid rgba(46, 125, 50, 0.15);
+  animation: banner-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes banner-slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.install-banner-icon {
+  border-radius: 10px;
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.install-banner-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.install-banner-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1b5e20;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.install-banner-sub {
+  font-size: 0.78rem;
+  color: #666;
+  line-height: 1.3;
+}
+
+.install-banner-btn {
+  padding: 7px 16px;
+  background: #2e7d32;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.install-banner-btn:hover {
+  background: #1b5e20;
+}
+
+.install-banner-dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #999;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.install-banner-dismiss:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.install-banner-dismiss:focus-visible {
+  outline: 2px solid #2e7d32;
+  outline-offset: 2px;
 }

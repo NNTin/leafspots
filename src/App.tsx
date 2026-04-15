@@ -7,11 +7,14 @@ import ShareButton from './components/ShareButton';
 import NavShareButton from './components/NavShareButton';
 import LeafletPanel from './components/LeafletPanel';
 import SidebarSocialIcons from './components/SidebarSocialIcons';
+import GpsButton from './components/GpsButton';
+import InstallBanner from './components/InstallBanner';
 import type { MenuItem } from './components/OverflowMenuBar';
 import { useDrawing } from './hooks/useDrawing';
 import { usePins } from './hooks/usePins';
 import { useOrientation } from './hooks/useOrientation';
 import { useLeafletConnection } from './hooks/useLeafletConnection';
+import { useInstallPrompt } from './hooks/useInstallPrompt';
 import { loadStateFromUrl, buildShareUrl } from './utils/urlState';
 import { shortenUrl } from './lib/leaflet-client';
 import type { MapState } from './utils/urlState';
@@ -63,6 +66,7 @@ function App() {
   );
 
   const leaflet = useLeafletConnection();
+  const { installState, install, dismiss } = useInstallPrompt();
 
   const effectiveSelectedTtl = useMemo(() => {
     const opts = leaflet.capabilities?.ttlOptions;
@@ -383,8 +387,11 @@ function App() {
             onPinMove={movePin}
             onEditPin={handleEditPin}
           />
+          <GpsButton onLocationDetected={setUserLocation} />
         </main>
       </div>
+
+      <InstallBanner state={installState} onInstall={install} onDismiss={dismiss} />
     </div>
   );
 }
