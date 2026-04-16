@@ -5,6 +5,7 @@ import type { Coordinates } from '../utils/distance';
 import { haversineDistance } from '../utils/distance';
 import DrawingCanvas from './DrawingCanvas';
 import SpotMarker from './SpotMarker';
+import EventAreas from './EventAreas';
 import type { Stroke } from '../hooks/useDrawing';
 import type { CustomPin } from '../hooks/usePins';
 
@@ -113,12 +114,16 @@ export default function MapView({
     <MapContainer
       center={initialCenter ?? BAVARIA_CENTER}
       zoom={initialZoom ?? DEFAULT_ZOOM}
+      maxZoom={21}
       style={{ height: '100%', width: '100%' }}
       zoomControl={true}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        maxNativeZoom={19}
+        maxZoom={21}
+        detectRetina={true}
       />
       {userLocation && (
         <SpotMarker
@@ -130,6 +135,7 @@ export default function MapView({
           description="Distances are measured from this marker."
         />
       )}
+      <EventAreas />
       <MapStateTracker onViewChange={onViewChange} />
       <MapSizeInvalidator sidebarOpen={sidebarOpen} />
       <PinPlacementHandler pinMode={pinMode} pinColor={pinColor} onPinAdd={onPinAdd} />
