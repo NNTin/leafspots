@@ -1,29 +1,29 @@
 import { useState } from 'react';
 import { GeoJSON, Marker, useMap, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
+// import L from 'leaflet';
 import type { Geometry } from 'geojson';
 import eventAreas from '../data/event-areas.json';
 
 const MIN_ZOOM = 18;
 
-function createLabelIcon(name: string) {
-  return L.divIcon({
-    className: '',
-    html: `<div style="
-      background: rgba(255,255,255,0.85);
-      border: 1px solid rgba(0,0,0,0.25);
-      border-radius: 4px;
-      padding: 2px 6px;
-      font-size: 12px;
-      font-weight: 600;
-      white-space: nowrap;
-      pointer-events: none;
-      transform: translate(-50%, -50%);
-    ">${name}</div>`,
-    iconSize: undefined,
-    iconAnchor: [0, 0],
-  });
-}
+// function createLabelIcon(name: string) {
+//   return L.divIcon({
+//     className: '',
+//     html: `<div style="
+//       background: rgba(255,255,255,0.85);
+//       border: 1px solid rgba(0,0,0,0.25);
+//       border-radius: 4px;
+//       padding: 2px 6px;
+//       font-size: 12px;
+//       font-weight: 600;
+//       white-space: nowrap;
+//       pointer-events: none;
+//       transform: translate(-50%, -50%);
+//     ">${name}</div>`,
+//     iconSize: undefined,
+//     iconAnchor: [0, 0],
+//   });
+// }
 
 function EventAreasInner() {
   const map = useMap();
