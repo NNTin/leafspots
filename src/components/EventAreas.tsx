@@ -158,20 +158,17 @@ function EventAreasInner() {
               );
             }
 
-            const centerX = shape.x + shape.width / 2;
-            const centerY = shape.y + shape.height / 2;
-
             return (
               <rect
                 key={`shape-rectangle-${index}`}
-                x={shape.x}
-                y={shape.y}
+                x={shape.x - shape.width / 2}
+                y={shape.y - shape.height / 2}
                 width={shape.width}
                 height={shape.height}
                 fill={shape.color}
                 stroke={shape.color}
                 strokeWidth={shape.strokeWidth}
-                transform={`rotate(${shape.rotation} ${centerX} ${centerY})`}
+                transform={`rotate(${shape.rotation} ${shape.x} ${shape.y})`}
               />
             );
           })}
