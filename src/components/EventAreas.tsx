@@ -129,6 +129,7 @@ function EventAreasInner() {
         <GeoJSON
           key={area.place_id}
           data={area.geojson as Geometry}
+          style={{ fillOpacity: 0.05, fillColor: '#3388ff' }}
         />
       ))}
       {zoom >= SHAPES_MIN_ZOOM && (
