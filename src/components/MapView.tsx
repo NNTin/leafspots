@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { forwardRef, useEffect } from 'react';
 import { MapContainer, TileLayer, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Coordinates } from '../utils/distance';
@@ -26,6 +26,8 @@ interface MapViewProps {
   onPinAdd: (lat: number, lng: number, color: string) => void;
   onPinMove: (id: string, lat: number, lng: number) => void;
   onEditPin?: (id: string) => void;
+  eventAreaMarkerOverrides?: Record<number, { title: string; description: string }>;
+  onEditAreaMarker?: (placeId: number, title: string, description: string) => void;
 }
 
 // Bavaria center
@@ -92,7 +94,7 @@ function MapSizeInvalidator({ sidebarOpen }: { sidebarOpen: boolean }) {
   return null;
 }
 
-export default function MapView({
+const MapView = forwardRef<HTMLDivElement, MapViewProps>(function MapView({
   userLocation,
   initialCenter,
   initialZoom,
@@ -109,66 +111,76 @@ export default function MapView({
   onPinAdd,
   onPinMove,
   onEditPin,
-}: MapViewProps) {
+  eventAreaMarkerOverrides = {},
+  onEditAreaMarker,
+}: MapViewProps, ref) {
   return (
-    <MapContainer
-      center={initialCenter ?? BAVARIA_CENTER}
-      zoom={initialZoom ?? DEFAULT_ZOOM}
-      maxZoom={21}
-      style={{ height: '100%', width: '100%' }}
-      zoomControl={true}
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        maxNativeZoom={19}
+    <div ref={ref} className="map-view">
+      <MapContainer
+        center={initialCenter ?? BAVARIA_CENTER}
+        zoom={initialZoom ?? DEFAULT_ZOOM}
         maxZoom={21}
-        detectRetina={true}
-      />
-      {userLocation && (
-        <SpotMarker
-          lat={userLocation.lat}
-          lng={userLocation.lng}
-          name="Your Location"
-          color="#1e88e5"
-          badgeText="your location"
-          description="Distances are measured from this marker."
+        style={{ height: '100%', width: '100%' }}
+        zoomControl={true}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          maxNativeZoom={19}
+          maxZoom={21}
+          detectRetina={true}
+          crossOrigin={true}
         />
-      )}
-      <EventAreas />
-      <MapStateTracker onViewChange={onViewChange} />
-      <MapSizeInvalidator sidebarOpen={sidebarOpen} />
-      <PinPlacementHandler pinMode={pinMode} pinColor={pinColor} onPinAdd={onPinAdd} />
-      <MapCursorHandler pinMode={pinMode} />
-      {pins.map((pin, index) => {
-        const distanceKm =
-          userLocation !== null
-            ? haversineDistance(userLocation, { lat: pin.lat, lng: pin.lng })
-            : undefined;
-
-        return (
+        {userLocation && (
           <SpotMarker
-            key={pin.id}
-            lat={pin.lat}
-            lng={pin.lng}
-            name={pin.title || `Pin ${index + 1}`}
-            color={pin.color}
-            badgeText="pin"
-            description={pin.description || undefined}
-            distanceKm={distanceKm}
-            draggable={true}
-            onDragEnd={(lat, lng) => onPinMove(pin.id, lat, lng)}
-            onEdit={onEditPin ? () => onEditPin(pin.id) : undefined}
+            lat={userLocation.lat}
+            lng={userLocation.lng}
+            name="Your Location"
+            color="#1e88e5"
+            badgeText="your location"
+            description="Distances are measured from this marker."
           />
-        );
-      })}
-      <DrawingCanvas
-        strokes={strokes}
-        drawMode={drawMode}
-        strokeColor={strokeColor}
-        strokeWidth={strokeWidth}
-        onStrokeComplete={onStrokeComplete}
-      />
-    </MapContainer>
+        )}
+        <EventAreas
+          markerOverrides={eventAreaMarkerOverrides}
+          onEditMarker={onEditAreaMarker}
+        />
+        <MapStateTracker onViewChange={onViewChange} />
+        <MapSizeInvalidator sidebarOpen={sidebarOpen} />
+        <PinPlacementHandler pinMode={pinMode} pinColor={pinColor} onPinAdd={onPinAdd} />
+        <MapCursorHandler pinMode={pinMode} />
+        {pins.map((pin, index) => {
+          const distanceKm =
+            userLocation !== null
+              ? haversineDistance(userLocation, { lat: pin.lat, lng: pin.lng })
+              : undefined;
+
+          return (
+            <SpotMarker
+              key={pin.id}
+              lat={pin.lat}
+              lng={pin.lng}
+              name={pin.title || `Pin ${index + 1}`}
+              color={pin.color}
+              badgeText="pin"
+              description={pin.description || undefined}
+              distanceKm={distanceKm}
+              draggable={true}
+              onDragEnd={(lat, lng) => onPinMove(pin.id, lat, lng)}
+              onEdit={onEditPin ? () => onEditPin(pin.id) : undefined}
+            />
+          );
+        })}
+        <DrawingCanvas
+          strokes={strokes}
+          drawMode={drawMode}
+          strokeColor={strokeColor}
+          strokeWidth={strokeWidth}
+          onStrokeComplete={onStrokeComplete}
+        />
+      </MapContainer>
+    </div>
   );
-}
+});
+
+export default MapView;

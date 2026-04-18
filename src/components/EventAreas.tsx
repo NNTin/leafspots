@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { GeoJSON, Marker, SVGOverlay, useMap, useMapEvents } from 'react-leaflet';
+import { GeoJSON, Marker, Popup, SVGOverlay, useMap, useMapEvents } from 'react-leaflet';
 // import L from 'leaflet';
 import type { Geometry, Position } from 'geojson';
+import MarkerPopupContent from './MarkerPopupContent';
+import SpotMarker from './SpotMarker';
 
 const MIN_ZOOM = 18;
 const SHAPES_MIN_ZOOM = 19;
@@ -17,7 +19,14 @@ interface EventArea {
   place_id: number;
   lat: string;
   lon: string;
+  name: string;
+  display_name: string;
   geojson: Geometry;
+}
+
+interface EventAreasProps {
+  markerOverrides?: Record<number, { title: string; description: string }>;
+  onEditMarker?: (placeId: number, title: string, description: string) => void;
 }
 
 interface ShapeLine {
@@ -54,6 +63,7 @@ type OverlayAssetDimensions = Record<string, { width: number; height: number }>;
 const EVENT_AREAS_DATA_URL = new URL('../data/event-areas.json', import.meta.url).href;
 const SHAPES_DATA_URL = new URL('../data/shapes.json', import.meta.url).href;
 const APP_BASE_URL = import.meta.env.BASE_URL;
+const CUSTOM_AREA_MARKER_COLOR = '#2e7d32';
 
 async function loadJson<T>(url: string): Promise<T> {
   const response = await fetch(url);
@@ -157,7 +167,10 @@ function getEventAreasOverlayBounds(eventAreas: EventArea[]): [[number, number],
 //   });
 // }
 
-function EventAreasInner() {
+function EventAreasInner({
+  markerOverrides = {},
+  onEditMarker,
+}: EventAreasProps) {
   const map = useMap();
   const [zoom, setZoom] = useState(() => map.getZoom());
   const [eventAreas, setEventAreas] = useState<EventArea[]>([]);
@@ -340,18 +353,60 @@ function EventAreasInner() {
           })}
         </SVGOverlay>
       )}
-      {eventAreas.map((area) => (
-        <Marker
-          key={`label-${area.place_id}`}
-          position={[parseFloat(area.lat), parseFloat(area.lon)]}
-          // icon={createLabelIcon(area.name)}
-          interactive={false}
-        />
-      ))}
+      {eventAreas.map((area) => {
+        const lat = Number.parseFloat(area.lat);
+        const lng = Number.parseFloat(area.lon);
+
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+        const hasOverride = Object.prototype.hasOwnProperty.call(markerOverrides, area.place_id);
+        const override = hasOverride ? markerOverrides[area.place_id] : undefined;
+        const markerTitle = override ? (override.title || area.name) : area.name;
+        const markerDescription = override ? override.description : area.display_name;
+
+        if (override) {
+          return (
+            <SpotMarker
+              key={`area-marker-${area.place_id}`}
+              lat={lat}
+              lng={lng}
+              name={markerTitle}
+              description={markerDescription || undefined}
+              color={CUSTOM_AREA_MARKER_COLOR}
+              onEdit={
+                onEditMarker
+                  ? () => onEditMarker(area.place_id, override.title, override.description)
+                  : undefined
+              }
+            />
+          );
+        }
+
+        return (
+          <Marker
+            key={`area-marker-${area.place_id}`}
+            position={[lat, lng]}
+          >
+            <Popup>
+              <MarkerPopupContent
+                title={markerTitle}
+                lat={lat}
+                lng={lng}
+                description={markerDescription}
+                onEdit={
+                  onEditMarker
+                    ? () => onEditMarker(area.place_id, area.name, area.display_name)
+                    : undefined
+                }
+              />
+            </Popup>
+          </Marker>
+        );
+      })}
     </>
   );
 }
 
-export default function EventAreas() {
-  return <EventAreasInner />;
+export default function EventAreas(props: EventAreasProps) {
+  return <EventAreasInner {...props} />;
 }

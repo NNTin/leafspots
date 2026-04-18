@@ -288,6 +288,11 @@
   position: relative; /* needed for absolutely-positioned overlays like GpsButton */
 }
 
+.map-view {
+  width: 100%;
+  height: 100%;
+}
+
 /* ── Sidebar panels ──────────────────────────────────────── */
 .location-panel,
 .filters-panel {

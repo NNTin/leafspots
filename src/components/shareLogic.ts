@@ -66,6 +66,7 @@ export type ShareModalState =
 interface UseConnectedShareArgs {
   getShareUrl: () => string;
   getShortenedUrl?: (longUrl: string) => Promise<ShortenResult>;
+  getShareFile?: () => Promise<File | null>;
   selectedTtl?: string;
   selectedTtlLabel?: string;
 }
@@ -73,6 +74,7 @@ interface UseConnectedShareArgs {
 export function useConnectedShare({
   getShareUrl,
   getShortenedUrl,
+  getShareFile,
   selectedTtl,
   selectedTtlLabel,
 }: UseConnectedShareArgs) {
@@ -93,15 +95,15 @@ export function useConnectedShare({
   }, []);
 
   const handleShare = useCallback(async () => {
-    const longUrl = getShareUrl();
+    setBusy(true);
+    try {
+      const longUrl = getShareUrl();
 
-    let shareUrl = longUrl;
-    let shareText = SHARE_TEXT;
-    let shortenError: string | undefined;
+      let shareUrl = longUrl;
+      let shareText = SHARE_TEXT;
+      let shortenError: string | undefined;
 
-    if (getShortenedUrl) {
-      setBusy(true);
-      try {
+      if (getShortenedUrl) {
         const result = await getShortenedUrl(longUrl);
         if (result.ok) {
           shareUrl = result.shortUrl;
@@ -110,28 +112,48 @@ export function useConnectedShare({
           shortenError = getShortenModalMessage(result.error);
           shareUrl = longUrl;
         }
-      } finally {
-        setBusy(false);
-      }
 
-      if (shortenError) {
-        openModal(longUrl, shortenError);
-        return;
-      }
-    }
-
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: SHARE_TITLE, text: shareText, url: shareUrl });
-      } catch (err) {
-        if (err instanceof Error && err.name !== 'AbortError') {
-          openModal(shareUrl);
+        if (shortenError) {
+          openModal(longUrl, shortenError);
+          return;
         }
       }
-    } else {
-      openModal(shareUrl);
+
+      if (navigator.share) {
+        try {
+          let shareFile: File | null = null;
+
+          if (getShareFile) {
+            try {
+              shareFile = await getShareFile();
+            } catch (error) {
+              console.error('Failed to capture map share image.', error);
+            }
+          }
+
+          const shareData: ShareData = {
+            title: SHARE_TITLE,
+            text: shareText,
+            url: shareUrl,
+          };
+
+          if (shareFile && navigator.canShare?.({ files: [shareFile] })) {
+            shareData.files = [shareFile];
+          }
+
+          await navigator.share(shareData);
+        } catch (err) {
+          if (err instanceof Error && err.name !== 'AbortError') {
+            openModal(shareUrl);
+          }
+        }
+      } else {
+        openModal(shareUrl);
+      }
+    } finally {
+      setBusy(false);
     }
-  }, [getShareUrl, getShortenedUrl, openModal, selectedTtl, selectedTtlLabel]);
+  }, [getShareFile, getShareUrl, getShortenedUrl, openModal, selectedTtl, selectedTtlLabel]);
 
   const handleCopy = useCallback(() => {
     if (!modal.open) return;
