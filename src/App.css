@@ -271,6 +271,17 @@
   overflow: hidden;
 }
 
+.app-body-share-capture .sidebar {
+  width: 0;
+  min-width: 0;
+  flex-basis: 0;
+  flex-shrink: 1;
+  border-right: none;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 .sidebar {
   width: 280px;
   flex-shrink: 0;

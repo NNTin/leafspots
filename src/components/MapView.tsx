@@ -20,6 +20,7 @@ interface MapViewProps {
   onStrokeComplete: (stroke: Stroke) => void;
   onViewChange: (center: [number, number], zoom: number) => void;
   sidebarOpen: boolean;
+  layoutInvalidationKey?: string;
   pins: CustomPin[];
   pinMode: boolean;
   pinColor: string;
@@ -83,14 +84,14 @@ function MapCursorHandler({ pinMode }: { pinMode: boolean }) {
   return null;
 }
 
-/** Calls invalidateSize whenever sidebarOpen toggles so Leaflet reflows correctly. */
-function MapSizeInvalidator({ sidebarOpen }: { sidebarOpen: boolean }) {
+/** Calls invalidateSize whenever the map layout changes so Leaflet reflows correctly. */
+function MapSizeInvalidator({ layoutInvalidationKey }: { layoutInvalidationKey: string }) {
   const map = useMap();
   useEffect(() => {
     // Delay lets CSS transitions finish before reflowing
     const id = setTimeout(() => map.invalidateSize(), 200);
     return () => clearTimeout(id);
-  }, [sidebarOpen, map]);
+  }, [layoutInvalidationKey, map]);
   return null;
 }
 
@@ -105,6 +106,7 @@ const MapView = forwardRef<HTMLDivElement, MapViewProps>(function MapView({
   onStrokeComplete,
   onViewChange,
   sidebarOpen,
+  layoutInvalidationKey = 'default',
   pins,
   pinMode,
   pinColor,
@@ -146,7 +148,7 @@ const MapView = forwardRef<HTMLDivElement, MapViewProps>(function MapView({
           onEditMarker={onEditAreaMarker}
         />
         <MapStateTracker onViewChange={onViewChange} />
-        <MapSizeInvalidator sidebarOpen={sidebarOpen} />
+        <MapSizeInvalidator layoutInvalidationKey={`${sidebarOpen ? 'open' : 'closed'}:${layoutInvalidationKey}`} />
         <PinPlacementHandler pinMode={pinMode} pinColor={pinColor} onPinAdd={onPinAdd} />
         <MapCursorHandler pinMode={pinMode} />
         {pins.map((pin, index) => {

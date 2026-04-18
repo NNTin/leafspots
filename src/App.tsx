@@ -23,12 +23,19 @@ import './App.css';
 
 const BAVARIA_CENTER: [number, number] = [48.79, 11.5];
 const DEFAULT_ZOOM = 8;
+const SHARE_CAPTURE_LAYOUT_DELAY_MS = 250;
 type ShareToastTone = 'success' | 'error';
 type ShareToast = { message: string; tone: ShareToastTone } | null;
 type EditingMarker =
   | { kind: 'custom-pin'; id: string }
   | { kind: 'event-area'; placeId: number };
 type EventAreaMarkerOverrideMap = Record<number, { title: string; description: string }>;
+
+function waitForShareCaptureLayout(): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, SHARE_CAPTURE_LAYOUT_DELAY_MS);
+  });
+}
 
 // Read any saved state from the URL once at module load time
 const urlState = loadStateFromUrl();
@@ -42,6 +49,7 @@ function App() {
   const [strokeColor, setStrokeColor] = useState('#e53935');
   const [strokeWidth, setStrokeWidth] = useState(4);
   const [shareToast, setShareToast] = useState<ShareToast>(null);
+  const [shareCaptureActive, setShareCaptureActive] = useState(false);
   const [pinMode, setPinMode] = useState(false);
   const [pinColor, setPinColor] = useState('#e53935');
   const [overflowItems, setOverflowItems] = useState<MenuItem[]>([]);
@@ -262,8 +270,22 @@ function App() {
 
   const getShareFile = useCallback(async (): Promise<File | null> => {
     if (!mapViewRef.current) return null;
-    return captureMapViewImage(mapViewRef.current);
-  }, []);
+
+    const shouldExpandMapForCapture = sidebarOpen;
+
+    if (shouldExpandMapForCapture) {
+      setShareCaptureActive(true);
+      await waitForShareCaptureLayout();
+    }
+
+    try {
+      return await captureMapViewImage(mapViewRef.current);
+    } finally {
+      if (shouldExpandMapForCapture) {
+        setShareCaptureActive(false);
+      }
+    }
+  }, [sidebarOpen]);
 
   // Only wire the shortener when the user is connected and shortening is allowed.
   const isConnected =
@@ -343,7 +365,7 @@ function App() {
         </div>
       )}
 
-      <div className="app-body">
+      <div className={`app-body${shareCaptureActive ? ' app-body-share-capture' : ''}`}>
         {sidebarOpen && (
           <aside className="sidebar">
             {overflowItems.length > 0 && (
@@ -431,6 +453,7 @@ function App() {
             onStrokeComplete={addStroke}
             onViewChange={handleViewChange}
             sidebarOpen={sidebarOpen}
+            layoutInvalidationKey={shareCaptureActive ? 'share-capture' : 'default'}
             pins={pins}
             pinMode={pinMode}
             pinColor={pinColor}
