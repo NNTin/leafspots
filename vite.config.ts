@@ -15,7 +15,7 @@ export default defineConfig({
       manifest: false,
       workbox: {
         // Precache the entire app shell (JS, CSS, HTML, icons)
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,json}'],
         runtimeCaching: [
           {
             // Cache OpenStreetMap tiles so the map works offline
