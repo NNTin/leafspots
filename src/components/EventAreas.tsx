@@ -1,9 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { GeoJSON, Marker, SVGOverlay, useMap, useMapEvents } from 'react-leaflet';
 // import L from 'leaflet';
 import type { Geometry, Position } from 'geojson';
-import eventAreasData from '../data/event-areas.json';
-import shapesData from '../data/shapes.json';
 
 const MIN_ZOOM = 18;
 const SHAPES_MIN_ZOOM = 19;
@@ -53,9 +51,19 @@ interface ShapeOverlay {
 type Shape = ShapeLine | ShapeRectangle | ShapeOverlay;
 type OverlayAssetDimensions = Record<string, { width: number; height: number }>;
 
-const eventAreas = eventAreasData as EventArea[];
-const shapes = shapesData as Shape[];
+const EVENT_AREAS_DATA_URL = new URL('../data/event-areas.json', import.meta.url).href;
+const SHAPES_DATA_URL = new URL('../data/shapes.json', import.meta.url).href;
 const APP_BASE_URL = import.meta.env.BASE_URL;
+
+async function loadJson<T>(url: string): Promise<T> {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Failed to load JSON from ${url}: ${response.status} ${response.statusText}`);
+  }
+
+  return (await response.json()) as T;
+}
 
 function resolveOverlayAssetUrl(src: string): string {
   if (
@@ -74,14 +82,6 @@ function resolveOverlayAssetUrl(src: string): string {
   return src;
 }
 
-const overlaySources = Array.from(
-  new Set(
-    shapes
-      .filter((shape): shape is ShapeOverlay => shape.type === 'overlay')
-      .map((shape) => resolveOverlayAssetUrl(shape.src)),
-  ),
-);
-
 function getGeometryPositions(geometry: Geometry): Position[] {
   switch (geometry.type) {
     case 'Polygon':
@@ -93,7 +93,7 @@ function getGeometryPositions(geometry: Geometry): Position[] {
   }
 }
 
-function getShapesOverlayBounds(): [[number, number], [number, number]] {
+function getShapesOverlayBounds(eventAreas: EventArea[]): [[number, number], [number, number]] | null {
   let minLng = Number.POSITIVE_INFINITY;
   let maxLng = Number.NEGATIVE_INFINITY;
   let minLat = Number.POSITIVE_INFINITY;
@@ -106,6 +106,15 @@ function getShapesOverlayBounds(): [[number, number], [number, number]] {
       minLat = Math.min(minLat, lat);
       maxLat = Math.max(maxLat, lat);
     }
+  }
+
+  if (
+    !Number.isFinite(minLng) ||
+    !Number.isFinite(maxLng) ||
+    !Number.isFinite(minLat) ||
+    !Number.isFinite(maxLat)
+  ) {
+    return null;
   }
 
   // `shapes.json` is authored in the same pixel space as `image.png`.
@@ -129,8 +138,6 @@ function getShapesOverlayBounds(): [[number, number], [number, number]] {
   return [[south, west], [north, east]];
 }
 
-const SHAPES_OVERLAY_BOUNDS = getShapesOverlayBounds();
-
 // function createLabelIcon(name: string) {
 //   return L.divIcon({
 //     className: '',
@@ -153,9 +160,65 @@ const SHAPES_OVERLAY_BOUNDS = getShapesOverlayBounds();
 function EventAreasInner() {
   const map = useMap();
   const [zoom, setZoom] = useState(() => map.getZoom());
+  const [eventAreas, setEventAreas] = useState<EventArea[]>([]);
+  const [shapes, setShapes] = useState<Shape[]>([]);
+  const hasRequestedShapesRef = useRef(false);
   const [overlayAssetDimensions, setOverlayAssetDimensions] = useState<OverlayAssetDimensions>({});
+  const shapesOverlayBounds = useMemo(() => getShapesOverlayBounds(eventAreas), [eventAreas]);
+  const overlaySources = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          shapes
+            .filter((shape): shape is ShapeOverlay => shape.type === 'overlay')
+            .map((shape) => resolveOverlayAssetUrl(shape.src)),
+        ),
+      ),
+    [shapes],
+  );
 
   useEffect(() => {
+    let isCancelled = false;
+
+    loadJson<EventArea[]>(EVENT_AREAS_DATA_URL)
+      .then((data) => {
+        if (!isCancelled) {
+          setEventAreas(data);
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (zoom < SHAPES_MIN_ZOOM || hasRequestedShapesRef.current) return;
+
+    let isCancelled = false;
+    hasRequestedShapesRef.current = true;
+
+    loadJson<Shape[]>(SHAPES_DATA_URL)
+      .then((data) => {
+        if (!isCancelled) {
+          setShapes(data);
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [zoom]);
+
+  useEffect(() => {
+    if (zoom < SHAPES_MIN_ZOOM || overlaySources.length === 0) return;
+
     let isCancelled = false;
 
     for (const src of overlaySources) {
@@ -183,7 +246,7 @@ function EventAreasInner() {
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [overlaySources, zoom]);
 
   useMapEvents({
     zoomend: (e) => setZoom(e.target.getZoom()),
@@ -200,9 +263,9 @@ function EventAreasInner() {
           style={{ fillOpacity: 0.05, fillColor: '#3388ff' }}
         />
       ))}
-      {zoom >= SHAPES_MIN_ZOOM && (
+      {zoom >= SHAPES_MIN_ZOOM && shapesOverlayBounds && (
         <SVGOverlay
-          bounds={SHAPES_OVERLAY_BOUNDS}
+          bounds={shapesOverlayBounds}
           interactive={false}
           attributes={{
             viewBox: `0 0 ${SHAPES_REFERENCE_SIZE.width} ${SHAPES_REFERENCE_SIZE.height}`,
