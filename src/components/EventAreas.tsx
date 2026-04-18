@@ -93,7 +93,7 @@ function getGeometryPositions(geometry: Geometry): Position[] {
   }
 }
 
-function getShapesOverlayBounds(eventAreas: EventArea[]): [[number, number], [number, number]] | null {
+function getEventAreasOverlayBounds(eventAreas: EventArea[]): [[number, number], [number, number]] | null {
   let minLng = Number.POSITIVE_INFINITY;
   let maxLng = Number.NEGATIVE_INFINITY;
   let minLat = Number.POSITIVE_INFINITY;
@@ -162,9 +162,11 @@ function EventAreasInner() {
   const [zoom, setZoom] = useState(() => map.getZoom());
   const [eventAreas, setEventAreas] = useState<EventArea[]>([]);
   const [shapes, setShapes] = useState<Shape[]>([]);
-  const hasRequestedShapesRef = useRef(false);
+  const shapesLoadedRef = useRef(false);
+  const shapesRequestRef = useRef<Promise<Shape[]> | null>(null);
+  const preloadedOverlaySourcesRef = useRef<Set<string>>(new Set());
   const [overlayAssetDimensions, setOverlayAssetDimensions] = useState<OverlayAssetDimensions>({});
-  const shapesOverlayBounds = useMemo(() => getShapesOverlayBounds(eventAreas), [eventAreas]);
+  const shapesOverlayBounds = useMemo(() => getEventAreasOverlayBounds(eventAreas), [eventAreas]);
   const overlaySources = useMemo(
     () =>
       Array.from(
@@ -196,18 +198,23 @@ function EventAreasInner() {
   }, []);
 
   useEffect(() => {
-    if (zoom < SHAPES_MIN_ZOOM || hasRequestedShapesRef.current) return;
+    if (zoom < SHAPES_MIN_ZOOM || shapesLoadedRef.current || shapesRequestRef.current) return;
 
     let isCancelled = false;
-    hasRequestedShapesRef.current = true;
+    const request = loadJson<Shape[]>(SHAPES_DATA_URL);
+    shapesRequestRef.current = request;
 
-    loadJson<Shape[]>(SHAPES_DATA_URL)
+    request
       .then((data) => {
         if (!isCancelled) {
           setShapes(data);
+          shapesLoadedRef.current = true;
         }
+
+        shapesRequestRef.current = null;
       })
       .catch((error) => {
+        shapesRequestRef.current = null;
         console.error(error);
       });
 
@@ -222,10 +229,13 @@ function EventAreasInner() {
     let isCancelled = false;
 
     for (const src of overlaySources) {
+      if (preloadedOverlaySourcesRef.current.has(src)) continue;
+
       const image = new Image();
 
       image.onload = () => {
         if (isCancelled || image.naturalWidth === 0 || image.naturalHeight === 0) return;
+        preloadedOverlaySourcesRef.current.add(src);
 
         setOverlayAssetDimensions((current) => {
           if (current[src]) return current;
