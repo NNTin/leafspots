@@ -91,6 +91,12 @@ function App() {
     return leaflet.capabilities?.ttlOptions.find((opt) => opt.value === effectiveSelectedTtl)?.label;
   }, [effectiveSelectedTtl, leaflet.capabilities]);
 
+  const shortenCacheScope = useMemo(() => {
+    return leaflet.connectionState === 'authenticated'
+      ? `auth:${leaflet.username ?? ''}`
+      : 'anonymous';
+  }, [leaflet.connectionState, leaflet.username]);
+
   // Draw mode and pin mode are mutually exclusive
   const handleToggleDrawMode = useCallback(() => {
     if (pinMode) setPinMode(false);
@@ -266,8 +272,8 @@ function App() {
     isConnected && (leaflet.capabilities?.shortenAllowed ?? false);
 
   const getShortenedUrl = useCallback(
-    (longUrl: string) => shortenUrl(longUrl, effectiveSelectedTtl),
-    [effectiveSelectedTtl],
+    (longUrl: string) => shortenUrl(longUrl, effectiveSelectedTtl, { cacheScope: shortenCacheScope }),
+    [effectiveSelectedTtl, shortenCacheScope],
   );
 
   const handleOpenSidebar = useCallback(() => {

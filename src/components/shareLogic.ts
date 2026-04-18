@@ -44,19 +44,27 @@ function formatUtcTimestamp(date: Date): string {
   return `${date.toISOString().slice(0, 19).replace('T', ' ')} UTC`;
 }
 
-function buildShareText(selectedTtl?: string, selectedTtlLabel?: string): string {
+function buildShareText(
+  selectedTtl?: string,
+  selectedTtlLabel?: string,
+  expiresAt?: number | null,
+): string {
   if (!selectedTtl) return SHARE_TEXT;
-  if (selectedTtl === 'never') {
+  if (selectedTtl === 'never' || expiresAt === null) {
     return `${SHARE_TEXT}. This short link never expires.`;
+  }
+
+  if (typeof expiresAt === 'number' && Number.isFinite(expiresAt)) {
+    return `${SHARE_TEXT}. This short link expires at ${formatUtcTimestamp(new Date(expiresAt))}.`;
   }
 
   const ttlMs = parseTtlToMs(selectedTtl);
   if (ttlMs === null) return SHARE_TEXT;
 
-  const expiresAt = new Date(Date.now() + ttlMs);
+  const nextExpiresAt = new Date(Date.now() + ttlMs);
   const ttlText = formatTtlLabel(selectedTtl, selectedTtlLabel);
 
-  return `${SHARE_TEXT}. This short link expires in ${ttlText} at ${formatUtcTimestamp(expiresAt)}.`;
+  return `${SHARE_TEXT}. This short link expires in ${ttlText} at ${formatUtcTimestamp(nextExpiresAt)}.`;
 }
 
 export type ShareModalState =
@@ -107,7 +115,7 @@ export function useConnectedShare({
         const result = await getShortenedUrl(longUrl);
         if (result.ok) {
           shareUrl = result.shortUrl;
-          shareText = buildShareText(selectedTtl, selectedTtlLabel);
+          shareText = buildShareText(selectedTtl, selectedTtlLabel, result.expiresAt);
         } else {
           shortenError = getShortenModalMessage(result.error);
           shareUrl = longUrl;
