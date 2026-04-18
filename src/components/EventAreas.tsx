@@ -360,8 +360,7 @@ function EventAreasInner({
 
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
 
-        const hasOverride = Object.prototype.hasOwnProperty.call(markerOverrides, area.place_id);
-        const override = hasOverride ? markerOverrides[area.place_id] : undefined;
+        const override = markerOverrides[area.place_id];
         const markerTitle = override ? (override.title || area.name) : area.name;
         const markerDescription = override ? override.description : area.display_name;
 

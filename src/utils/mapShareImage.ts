@@ -13,7 +13,7 @@ export async function captureMapViewImage(element: HTMLElement): Promise<File | 
 
   const blob = await toBlob(element, {
     backgroundColor: '#ffffff',
-    cacheBust: true,
+    cacheBust: navigator.onLine,
     pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
   });
 

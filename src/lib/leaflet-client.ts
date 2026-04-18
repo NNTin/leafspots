@@ -107,7 +107,7 @@ function parseTtlToMs(ttl: string): number | null {
 function computeExpiresAt(ttl: string): number | null {
   if (ttl === 'never') return null;
   const ttlMs = parseTtlToMs(ttl);
-  return ttlMs === null ? null : Date.now() + ttlMs;
+  return ttlMs === null ? Date.now() : Date.now() + ttlMs;
 }
 
 function readShortenCache(): Record<string, CachedShortUrlEntry> {
