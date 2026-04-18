@@ -34,6 +34,9 @@ interface MapViewProps {
 // Bavaria center
 const BAVARIA_CENTER: [number, number] = [48.79, 11.5];
 const DEFAULT_ZOOM = 8;
+const MAP_MAX_ZOOM = 21;
+const TILE_MAX_NATIVE_ZOOM = 19;
+const TILE_LAYER_MAX_ZOOM = MAP_MAX_ZOOM + 1;
 
 function MapStateTracker({
   onViewChange,
@@ -121,15 +124,18 @@ const MapView = forwardRef<HTMLDivElement, MapViewProps>(function MapView({
       <MapContainer
         center={initialCenter ?? BAVARIA_CENTER}
         zoom={initialZoom ?? DEFAULT_ZOOM}
-        maxZoom={21}
+        maxZoom={MAP_MAX_ZOOM}
         style={{ height: '100%', width: '100%' }}
         zoomControl={true}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          maxNativeZoom={19}
-          maxZoom={21}
+          maxNativeZoom={TILE_MAX_NATIVE_ZOOM}
+          // Leaflet's retina mode internally asks for one more zoom level.
+          // Without this extra headroom, mobile retina devices can hit the
+          // map max zoom and end up with blank tiles.
+          maxZoom={TILE_LAYER_MAX_ZOOM}
           detectRetina={true}
           crossOrigin={true}
         />
