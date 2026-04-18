@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { GeoJSON, Marker, SVGOverlay, useMap, useMapEvents } from 'react-leaflet';
 // import L from 'leaflet';
 import type { Geometry, Position } from 'geojson';
@@ -40,10 +40,47 @@ interface ShapeRectangle {
   strokeWidth: number;
 }
 
-type Shape = ShapeLine | ShapeRectangle;
+interface ShapeOverlay {
+  type: 'overlay';
+  src: string;
+  x: number;
+  y: number;
+  scaleX: number;
+  scaleY: number;
+  rotation: number;
+}
+
+type Shape = ShapeLine | ShapeRectangle | ShapeOverlay;
+type OverlayAssetDimensions = Record<string, { width: number; height: number }>;
 
 const eventAreas = eventAreasData as EventArea[];
 const shapes = shapesData as Shape[];
+const APP_BASE_URL = import.meta.env.BASE_URL;
+
+function resolveOverlayAssetUrl(src: string): string {
+  if (
+    src.startsWith('http://') ||
+    src.startsWith('https://') ||
+    src.startsWith('data:') ||
+    src.startsWith('blob:')
+  ) {
+    return src;
+  }
+
+  if (src.startsWith('/')) {
+    return `${APP_BASE_URL}${src.slice(1)}`;
+  }
+
+  return src;
+}
+
+const overlaySources = Array.from(
+  new Set(
+    shapes
+      .filter((shape): shape is ShapeOverlay => shape.type === 'overlay')
+      .map((shape) => resolveOverlayAssetUrl(shape.src)),
+  ),
+);
 
 function getGeometryPositions(geometry: Geometry): Position[] {
   switch (geometry.type) {
@@ -116,6 +153,37 @@ const SHAPES_OVERLAY_BOUNDS = getShapesOverlayBounds();
 function EventAreasInner() {
   const map = useMap();
   const [zoom, setZoom] = useState(() => map.getZoom());
+  const [overlayAssetDimensions, setOverlayAssetDimensions] = useState<OverlayAssetDimensions>({});
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    for (const src of overlaySources) {
+      const image = new Image();
+
+      image.onload = () => {
+        if (isCancelled || image.naturalWidth === 0 || image.naturalHeight === 0) return;
+
+        setOverlayAssetDimensions((current) => {
+          if (current[src]) return current;
+
+          return {
+            ...current,
+            [src]: {
+              width: image.naturalWidth,
+              height: image.naturalHeight,
+            },
+          };
+        });
+      };
+
+      image.src = src;
+    }
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   useMapEvents({
     zoomend: (e) => setZoom(e.target.getZoom()),
@@ -156,6 +224,30 @@ function EventAreasInner() {
                   stroke={shape.color}
                   strokeWidth={shape.strokeWidth}
                 />
+              );
+            }
+
+            if (shape.type === 'overlay') {
+              const overlaySrc = resolveOverlayAssetUrl(shape.src);
+              const dimensions = overlayAssetDimensions[overlaySrc];
+
+              if (!dimensions) return null;
+
+              return (
+                <g key={`shape-overlay-${index}`} transform={`translate(${shape.x} ${shape.y})`}>
+                  <g transform={`rotate(${shape.rotation})`}>
+                    <g transform={`scale(${shape.scaleX} ${shape.scaleY})`}>
+                      <image
+                        href={overlaySrc}
+                        x={-dimensions.width / 2}
+                        y={-dimensions.height / 2}
+                        width={dimensions.width}
+                        height={dimensions.height}
+                        preserveAspectRatio="none"
+                      />
+                    </g>
+                  </g>
+                </g>
               );
             }
 
