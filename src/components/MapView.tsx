@@ -156,7 +156,7 @@ const MapView = forwardRef<HTMLDivElement, MapViewProps>(function MapView({
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           maxNativeZoom={TILE_MAX_NATIVE_ZOOM}
           maxZoom={MAP_MAX_ZOOM}
           // Standard OSM tiles top out at z19. Leaflet's retina mode bumps the
