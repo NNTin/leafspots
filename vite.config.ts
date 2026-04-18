@@ -1,9 +1,12 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  test: {
+    environment: 'jsdom',
+  },
   plugins: [
     react(),
     VitePWA({
@@ -12,7 +15,7 @@ export default defineConfig({
       manifest: false,
       workbox: {
         // Precache the entire app shell (JS, CSS, HTML, icons)
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,json}'],
         runtimeCaching: [
           {
             // Cache OpenStreetMap tiles so the map works offline

@@ -14,6 +14,7 @@ type CopyFeedbackTone = 'success' | 'error';
 interface Props {
   connected: boolean;
   getShareUrl: () => string;
+  getShareFile?: () => Promise<File | null>;
   selectedTtl?: string;
   selectedTtlLabel?: string;
   /**
@@ -31,6 +32,7 @@ const UPSELL_TITLE_ID = 'nav-share-upsell-title';
 export default function NavShareButton({
   connected,
   getShareUrl,
+  getShareFile,
   selectedTtl,
   selectedTtlLabel,
   getShortenedUrl,
@@ -40,6 +42,7 @@ export default function NavShareButton({
   const [upsellOpen, setUpsellOpen] = useState(false);
   const share = useConnectedShare({
     getShareUrl,
+    getShareFile,
     getShortenedUrl,
     selectedTtl,
     selectedTtlLabel,

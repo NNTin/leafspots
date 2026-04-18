@@ -1,4 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
+import { flushSync } from 'react-dom';
+import type { Map as LeafletMap } from 'leaflet';
 import type { Coordinates } from './utils/distance';
 import MapView from './components/MapView';
 import LocationInput from './components/LocationInput';
@@ -16,6 +18,7 @@ import { useOrientation } from './hooks/useOrientation';
 import { useLeafletConnection } from './hooks/useLeafletConnection';
 import { useInstallPrompt } from './hooks/useInstallPrompt';
 import { loadStateFromUrl, buildShareUrl } from './utils/urlState';
+import { captureMapViewImage } from './utils/mapShareImage';
 import { shortenUrl } from './lib/leaflet-client';
 import type { MapState } from './utils/urlState';
 import './App.css';
@@ -24,6 +27,10 @@ const BAVARIA_CENTER: [number, number] = [48.79, 11.5];
 const DEFAULT_ZOOM = 8;
 type ShareToastTone = 'success' | 'error';
 type ShareToast = { message: string; tone: ShareToastTone } | null;
+type EditingMarker =
+  | { kind: 'custom-pin'; id: string }
+  | { kind: 'event-area'; placeId: number };
+type EventAreaMarkerOverrideMap = Record<number, { title: string; description: string }>;
 
 // Read any saved state from the URL once at module load time
 const urlState = loadStateFromUrl();
@@ -37,20 +44,30 @@ function App() {
   const [strokeColor, setStrokeColor] = useState('#e53935');
   const [strokeWidth, setStrokeWidth] = useState(4);
   const [shareToast, setShareToast] = useState<ShareToast>(null);
+  const [shareCaptureActive, setShareCaptureActive] = useState(false);
   const [pinMode, setPinMode] = useState(false);
   const [pinColor, setPinColor] = useState('#e53935');
   const [overflowItems, setOverflowItems] = useState<MenuItem[]>([]);
   const [showFullTitle, setShowFullTitle] = useState(true);
-  const [editingPinId, setEditingPinId] = useState<string | null>(null);
+  const [editingMarker, setEditingMarker] = useState<EditingMarker | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [selectedTtl, setSelectedTtl] = useState('5m');
+  const [eventAreaMarkerOverrides, setEventAreaMarkerOverrides] = useState<EventAreaMarkerOverrideMap>(
+    () =>
+      (urlState?.areaPins ?? []).reduce<EventAreaMarkerOverrideMap>((acc, [placeId, title, description]) => {
+        acc[placeId] = { title, description };
+        return acc;
+      }, {}),
+  );
 
   const headerRef = useRef<HTMLElement>(null);
   const headerLeftRef = useRef<HTMLDivElement>(null);
   const fullTitleMeasureRef = useRef<HTMLSpanElement>(null);
   const editTitleRef = useRef<HTMLInputElement>(null);
   const shareToastTimeoutRef = useRef<number | null>(null);
+  const mapViewRef = useRef<HTMLDivElement>(null);
+  const leafletMapRef = useRef<LeafletMap | null>(null);
 
   // Track current map view via refs (no re-render needed)
   const mapCenterRef = useRef<[number, number]>(urlState?.center ?? BAVARIA_CENTER);
@@ -78,6 +95,12 @@ function App() {
     return leaflet.capabilities?.ttlOptions.find((opt) => opt.value === effectiveSelectedTtl)?.label;
   }, [effectiveSelectedTtl, leaflet.capabilities]);
 
+  const shortenCacheScope = useMemo(() => {
+    return leaflet.connectionState === 'authenticated'
+      ? `auth:${leaflet.username ?? ''}`
+      : 'anonymous';
+  }, [leaflet.connectionState, leaflet.username]);
+
   // Draw mode and pin mode are mutually exclusive
   const handleToggleDrawMode = useCallback(() => {
     if (pinMode) setPinMode(false);
@@ -94,23 +117,46 @@ function App() {
     if (!pin) return;
     setEditTitle(pin.title);
     setEditDescription(pin.description);
-    setEditingPinId(id);
+    setEditingMarker({ kind: 'custom-pin', id });
     setSidebarOpen(true);
   }, [pins]);
 
-  const handleSavePin = useCallback(() => {
-    if (editingPinId === null) return;
-    updatePin(editingPinId, { title: editTitle, description: editDescription });
-    setEditingPinId(null);
-  }, [editingPinId, editTitle, editDescription, updatePin]);
+  const handleEditAreaMarker = useCallback((placeId: number, title: string, description: string) => {
+    setEditTitle(title);
+    setEditDescription(description);
+    setEditingMarker({ kind: 'event-area', placeId });
+    setSidebarOpen(true);
+  }, []);
+
+  const handleSaveMarker = useCallback(() => {
+    if (editingMarker === null) return;
+
+    if (editingMarker.kind === 'custom-pin') {
+      updatePin(editingMarker.id, { title: editTitle, description: editDescription });
+    } else {
+      setEventAreaMarkerOverrides((current) => ({
+        ...current,
+        [editingMarker.placeId]: {
+          title: editTitle,
+          description: editDescription,
+        },
+      }));
+    }
+
+    setEditingMarker(null);
+  }, [editDescription, editTitle, editingMarker, updatePin]);
 
   const handleCancelEdit = useCallback(() => {
-    setEditingPinId(null);
+    setEditingMarker(null);
   }, []);
 
   const handleViewChange = useCallback((center: [number, number], zoom: number) => {
     mapCenterRef.current = center;
     mapZoomRef.current = zoom;
+  }, []);
+
+  const handleMapReady = useCallback((map: LeafletMap) => {
+    leafletMapRef.current = map;
   }, []);
 
   const showShareMessage = useCallback((message: string, tone: ShareToastTone = 'success') => {
@@ -200,11 +246,11 @@ function App() {
   }, [recalculateTitle]);
 
   useEffect(() => {
-    if (editingPinId !== null) {
+    if (editingMarker !== null) {
       const timerId = setTimeout(() => editTitleRef.current?.focus(), 50);
       return () => clearTimeout(timerId);
     }
-  }, [editingPinId]);
+  }, [editingMarker]);
 
   const getShareUrl = useCallback((): string => {
     const state: MapState = {
@@ -213,9 +259,41 @@ function App() {
       strokes,
       pin: userLocation ? [userLocation.lat, userLocation.lng] : null,
       pins: pins.map(({ lat, lng, color, title, description }) => [lat, lng, color, title, description]),
+      areaPins: Object.entries(eventAreaMarkerOverrides).map(([placeId, { title, description }]) => [
+        Number(placeId),
+        title,
+        description,
+      ]),
     };
     return buildShareUrl(state);
-  }, [strokes, userLocation, pins]);
+  }, [eventAreaMarkerOverrides, strokes, userLocation, pins]);
+
+  const getShareFile = useCallback(async (): Promise<File | null> => {
+    const mapElement = mapViewRef.current;
+    if (!mapElement) return null;
+
+    const shouldExpandMapForCapture = sidebarOpen;
+
+    if (shouldExpandMapForCapture) {
+      flushSync(() => {
+        setShareCaptureActive(true);
+      });
+      mapElement.getBoundingClientRect();
+      leafletMapRef.current?.invalidateSize({ pan: false });
+    }
+
+    try {
+      return await captureMapViewImage(mapElement);
+    } finally {
+      if (shouldExpandMapForCapture) {
+        flushSync(() => {
+          setShareCaptureActive(false);
+        });
+        mapElement.getBoundingClientRect();
+        leafletMapRef.current?.invalidateSize({ pan: false });
+      }
+    }
+  }, [sidebarOpen]);
 
   // Only wire the shortener when the user is connected and shortening is allowed.
   const isConnected =
@@ -224,8 +302,8 @@ function App() {
     isConnected && (leaflet.capabilities?.shortenAllowed ?? false);
 
   const getShortenedUrl = useCallback(
-    (longUrl: string) => shortenUrl(longUrl, effectiveSelectedTtl),
-    [effectiveSelectedTtl],
+    (longUrl: string) => shortenUrl(longUrl, effectiveSelectedTtl, { cacheScope: shortenCacheScope }),
+    [effectiveSelectedTtl, shortenCacheScope],
   );
 
   const handleOpenSidebar = useCallback(() => {
@@ -267,6 +345,7 @@ function App() {
               <NavShareButton
                 connected={isConnected}
                 getShareUrl={getShareUrl}
+                getShareFile={getShareFile}
                 selectedTtl={shorteningEnabled ? effectiveSelectedTtl : undefined}
                 selectedTtlLabel={shorteningEnabled ? effectiveSelectedTtlLabel : undefined}
                 getShortenedUrl={shorteningEnabled ? getShortenedUrl : undefined}
@@ -294,7 +373,7 @@ function App() {
         </div>
       )}
 
-      <div className="app-body">
+      <div className={`app-body${shareCaptureActive ? ' app-body-share-capture' : ''}`}>
         {sidebarOpen && (
           <aside className="sidebar">
             {overflowItems.length > 0 && (
@@ -306,9 +385,9 @@ function App() {
                 ))}
               </div>
             )}
-            {editingPinId !== null && (
+            {editingMarker !== null && (
               <div className="edit-pin-panel">
-                <h2>Edit Pin</h2>
+                <h2>Edit Marker</h2>
                 <div className="edit-pin-form">
                   <label>
                     Title
@@ -317,10 +396,10 @@ function App() {
                       value={editTitle}
                       onChange={(e) => setEditTitle(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSavePin();
+                        if (e.key === 'Enter') handleSaveMarker();
                         if (e.key === 'Escape') handleCancelEdit();
                       }}
-                      placeholder="Pin title"
+                      placeholder="Marker title"
                     />
                   </label>
                   <label>
@@ -334,7 +413,7 @@ function App() {
                     />
                   </label>
                   <div className="edit-pin-actions">
-                    <button onClick={handleSavePin}>Save</button>
+                    <button onClick={handleSaveMarker}>Save</button>
                     <button onClick={handleCancelEdit}>Cancel</button>
                   </div>
                 </div>
@@ -348,6 +427,7 @@ function App() {
               <ShareButton
                 connected={isConnected}
                 getShareUrl={getShareUrl}
+                getShareFile={getShareFile}
                 selectedTtl={shorteningEnabled ? effectiveSelectedTtl : undefined}
                 selectedTtlLabel={shorteningEnabled ? effectiveSelectedTtlLabel : undefined}
                 getShortenedUrl={shorteningEnabled ? getShortenedUrl : undefined}
@@ -370,6 +450,7 @@ function App() {
         )}
         <main className="map-container">
           <MapView
+            ref={mapViewRef}
             userLocation={userLocation}
             initialCenter={urlState?.center}
             initialZoom={urlState?.zoom}
@@ -380,12 +461,16 @@ function App() {
             onStrokeComplete={addStroke}
             onViewChange={handleViewChange}
             sidebarOpen={sidebarOpen}
+            layoutInvalidationKey={shareCaptureActive ? 'share-capture' : 'default'}
+            onMapReady={handleMapReady}
             pins={pins}
             pinMode={pinMode}
             pinColor={pinColor}
             onPinAdd={addPin}
             onPinMove={movePin}
             onEditPin={handleEditPin}
+            eventAreaMarkerOverrides={eventAreaMarkerOverrides}
+            onEditAreaMarker={handleEditAreaMarker}
           />
           <GpsButton onLocationDetected={setUserLocation} />
         </main>

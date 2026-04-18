@@ -15,6 +15,7 @@ import { useConnectedShare } from './shareLogic';
 interface Props {
   connected: boolean;
   getShareUrl: () => string;
+  getShareFile?: () => Promise<File | null>;
   selectedTtl?: string;
   selectedTtlLabel?: string;
   /**
@@ -32,6 +33,7 @@ const DISABLED_SHEET_TITLE_ID = 'share-disabled-sheet-title';
 export default function ShareButton({
   connected,
   getShareUrl,
+  getShareFile,
   selectedTtl,
   selectedTtlLabel,
   getShortenedUrl,
@@ -45,6 +47,7 @@ export default function ShareButton({
 
   const share = useConnectedShare({
     getShareUrl,
+    getShareFile,
     getShortenedUrl,
     selectedTtl,
     selectedTtlLabel,

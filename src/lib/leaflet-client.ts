@@ -30,12 +30,21 @@ export type ShortenError =
   | { type: 'rate-limited'; message: string; retryAfter: number | null }
   | { type: 'unavailable'; message: string };
 
+export interface ShortenSuccessResult {
+  ok: true;
+  shortUrl: string;
+  expiresAt: number | null;
+  cached: boolean;
+}
+
 export type ShortenResult =
-  | { ok: true; shortUrl: string }
+  | ShortenSuccessResult
   | { ok: false; error: ShortenError };
 
 // ── localStorage key ────────────────────────────────────────
 const STORAGE_KEY = 'leaflet.optedIn';
+const SHORTEN_CACHE_KEY = 'leaflet.shortenCache.v1';
+const MAX_SHORTEN_CACHE_ENTRIES = 20;
 
 // ── CSRF token cache ────────────────────────────────────────
 let _csrfToken: string | null = null;
@@ -43,6 +52,15 @@ let _sessionCache: SessionResult | null = null;
 let _sessionPromise: Promise<SessionResult> | null = null;
 let _capabilitiesCache: LeafletCapabilities | null | undefined;
 let _capabilitiesPromise: Promise<LeafletCapabilities | null> | null = null;
+
+interface CachedShortUrlEntry {
+  scope: string;
+  longUrl: string;
+  ttl: string;
+  shortUrl: string;
+  expiresAt: number | null;
+  savedAt: number;
+}
 
 // ── Helpers ─────────────────────────────────────────────────
 
@@ -66,6 +84,97 @@ function parseRetryAfter(res: Response): number | null {
   if (!val) return null;
   const n = parseInt(val, 10);
   return Number.isFinite(n) ? n : null;
+}
+
+function parseTtlToMs(ttl: string): number | null {
+  if (ttl === 'never') return null;
+
+  const match = ttl.match(/^(\d+)([mhdw])$/);
+  if (!match) return null;
+
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+
+  switch (match[2]) {
+    case 'm': return amount * 60_000;
+    case 'h': return amount * 3_600_000;
+    case 'd': return amount * 86_400_000;
+    case 'w': return amount * 604_800_000;
+    default: return null;
+  }
+}
+
+function computeExpiresAt(ttl: string): number | null {
+  if (ttl === 'never') return null;
+  const ttlMs = parseTtlToMs(ttl);
+  return ttlMs === null ? Date.now() : Date.now() + ttlMs;
+}
+
+function readShortenCache(): Record<string, CachedShortUrlEntry> {
+  try {
+    const raw = localStorage.getItem(SHORTEN_CACHE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed as Record<string, CachedShortUrlEntry> : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeShortenCache(entries: Record<string, CachedShortUrlEntry>): void {
+  try {
+    localStorage.setItem(SHORTEN_CACHE_KEY, JSON.stringify(entries));
+  } catch {
+    // storage blocked or full — ignore
+  }
+}
+
+function makeShortenCacheKey(scope: string, longUrl: string, ttl: string): string {
+  return JSON.stringify([scope, ttl, longUrl]);
+}
+
+function pruneShortenCache(
+  entries: Record<string, CachedShortUrlEntry>,
+): Record<string, CachedShortUrlEntry> {
+  const now = Date.now();
+  const prunedEntries = Object.entries(entries)
+    .filter(([, entry]) => entry.expiresAt === null || entry.expiresAt > now)
+    .sort(([, a], [, b]) => b.savedAt - a.savedAt)
+    .slice(0, MAX_SHORTEN_CACHE_ENTRIES);
+
+  return Object.fromEntries(prunedEntries);
+}
+
+function getCachedShortUrl(scope: string, longUrl: string, ttl: string): CachedShortUrlEntry | null {
+  const originalEntries = readShortenCache();
+  const entries = pruneShortenCache(originalEntries);
+  const key = makeShortenCacheKey(scope, longUrl, ttl);
+  const entry = entries[key] ?? null;
+
+  if (Object.keys(entries).length !== Object.keys(originalEntries).length) {
+    writeShortenCache(entries);
+  }
+
+  return entry;
+}
+
+function setCachedShortUrl(
+  scope: string,
+  longUrl: string,
+  ttl: string,
+  shortUrl: string,
+  expiresAt: number | null,
+): void {
+  const entries = pruneShortenCache(readShortenCache());
+  entries[makeShortenCacheKey(scope, longUrl, ttl)] = {
+    scope,
+    longUrl,
+    ttl,
+    shortUrl,
+    expiresAt,
+    savedAt: Date.now(),
+  };
+  writeShortenCache(pruneShortenCache(entries));
 }
 
 // ── Opt-in persistence ───────────────────────────────────────
@@ -242,7 +351,7 @@ async function doShortenRequest(
   });
 }
 
-async function parseShortenResponse(res: Response): Promise<ShortenResult> {
+async function parseShortenResponse(res: Response, ttl: string): Promise<ShortenResult> {
   if (res.status === 429) {
     return {
       ok: false,
@@ -275,10 +384,32 @@ async function parseShortenResponse(res: Response): Promise<ShortenResult> {
     return { ok: false, error: { type: 'unavailable', message: 'Service unavailable.' } };
   }
   const data = (await res.json()) as { shortUrl: string };
-  return { ok: true, shortUrl: data.shortUrl };
+  return {
+    ok: true,
+    shortUrl: data.shortUrl,
+    expiresAt: computeExpiresAt(ttl),
+    cached: false,
+  };
 }
 
-export async function shortenUrl(url: string, ttl: string): Promise<ShortenResult> {
+export async function shortenUrl(
+  url: string,
+  ttl: string,
+  options?: { cacheScope?: string },
+): Promise<ShortenResult> {
+  const cacheScope = options?.cacheScope;
+  if (cacheScope) {
+    const cachedEntry = getCachedShortUrl(cacheScope, url, ttl);
+    if (cachedEntry) {
+      return {
+        ok: true,
+        shortUrl: cachedEntry.shortUrl,
+        expiresAt: cachedEntry.expiresAt,
+        cached: true,
+      };
+    }
+  }
+
   try {
     let csrfToken = await getCsrfToken();
     let res = await doShortenRequest(url, ttl, csrfToken);
@@ -290,7 +421,11 @@ export async function shortenUrl(url: string, ttl: string): Promise<ShortenResul
       res = await doShortenRequest(url, ttl, csrfToken);
     }
 
-    return parseShortenResponse(res);
+    const result = await parseShortenResponse(res, ttl);
+    if (result.ok && cacheScope) {
+      setCachedShortUrl(cacheScope, url, ttl, result.shortUrl, result.expiresAt);
+    }
+    return result;
   } catch {
     return {
       ok: false,

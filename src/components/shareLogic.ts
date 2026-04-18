@@ -44,19 +44,31 @@ function formatUtcTimestamp(date: Date): string {
   return `${date.toISOString().slice(0, 19).replace('T', ' ')} UTC`;
 }
 
-function buildShareText(selectedTtl?: string, selectedTtlLabel?: string): string {
+function buildShareText(
+  selectedTtl?: string,
+  selectedTtlLabel?: string,
+  expiresAt?: number | null,
+): string {
   if (!selectedTtl) return SHARE_TEXT;
   if (selectedTtl === 'never') {
     return `${SHARE_TEXT}. This short link never expires.`;
   }
 
+  if (typeof expiresAt === 'number' && Number.isFinite(expiresAt)) {
+    return `${SHARE_TEXT}. This short link expires at ${formatUtcTimestamp(new Date(expiresAt))}.`;
+  }
+
   const ttlMs = parseTtlToMs(selectedTtl);
   if (ttlMs === null) return SHARE_TEXT;
 
-  const expiresAt = new Date(Date.now() + ttlMs);
+  const nextExpiresAt = new Date(Date.now() + ttlMs);
   const ttlText = formatTtlLabel(selectedTtl, selectedTtlLabel);
 
-  return `${SHARE_TEXT}. This short link expires in ${ttlText} at ${formatUtcTimestamp(expiresAt)}.`;
+  return `${SHARE_TEXT}. This short link expires in ${ttlText} at ${formatUtcTimestamp(nextExpiresAt)}.`;
+}
+
+function buildFileShareText(shareText: string, shareUrl: string): string {
+  return `${shareText}\n${shareUrl}`;
 }
 
 export type ShareModalState =
@@ -66,6 +78,7 @@ export type ShareModalState =
 interface UseConnectedShareArgs {
   getShareUrl: () => string;
   getShortenedUrl?: (longUrl: string) => Promise<ShortenResult>;
+  getShareFile?: () => Promise<File | null>;
   selectedTtl?: string;
   selectedTtlLabel?: string;
 }
@@ -73,6 +86,7 @@ interface UseConnectedShareArgs {
 export function useConnectedShare({
   getShareUrl,
   getShortenedUrl,
+  getShareFile,
   selectedTtl,
   selectedTtlLabel,
 }: UseConnectedShareArgs) {
@@ -93,45 +107,74 @@ export function useConnectedShare({
   }, []);
 
   const handleShare = useCallback(async () => {
-    const longUrl = getShareUrl();
+    setBusy(true);
+    try {
+      const longUrl = getShareUrl();
 
-    let shareUrl = longUrl;
-    let shareText = SHARE_TEXT;
-    let shortenError: string | undefined;
+      let shareUrl = longUrl;
+      let shareText = SHARE_TEXT;
+      let shortenError: string | undefined;
 
-    if (getShortenedUrl) {
-      setBusy(true);
-      try {
+      if (getShortenedUrl) {
         const result = await getShortenedUrl(longUrl);
         if (result.ok) {
           shareUrl = result.shortUrl;
-          shareText = buildShareText(selectedTtl, selectedTtlLabel);
+          shareText = buildShareText(selectedTtl, selectedTtlLabel, result.expiresAt);
         } else {
           shortenError = getShortenModalMessage(result.error);
           shareUrl = longUrl;
         }
-      } finally {
-        setBusy(false);
-      }
 
-      if (shortenError) {
-        openModal(longUrl, shortenError);
-        return;
-      }
-    }
-
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: SHARE_TITLE, text: shareText, url: shareUrl });
-      } catch (err) {
-        if (err instanceof Error && err.name !== 'AbortError') {
-          openModal(shareUrl);
+        if (shortenError) {
+          openModal(longUrl, shortenError);
+          return;
         }
       }
-    } else {
-      openModal(shareUrl);
+
+      if (navigator.share) {
+        try {
+          let shareFile: File | null = null;
+
+          if (getShareFile) {
+            try {
+              shareFile = await getShareFile();
+            } catch (error) {
+              console.error('Failed to capture map share image.', error);
+            }
+          }
+
+          if (shareFile && navigator.canShare?.({ files: [shareFile] })) {
+            // Android share targets don't have a dedicated URL field, and mixed
+            // `url` + `files` payloads are commonly flattened or partially
+            // discarded. Keep file shares file-first and inline the link into
+            // the text body instead.
+            const fileShareData: ShareData = {
+              title: SHARE_TITLE,
+              text: buildFileShareText(shareText, shareUrl),
+              files: [shareFile],
+            };
+
+            await navigator.share(fileShareData);
+            return;
+          }
+
+          await navigator.share({
+            title: SHARE_TITLE,
+            text: shareText,
+            url: shareUrl,
+          });
+        } catch (err) {
+          if (err instanceof Error && err.name !== 'AbortError') {
+            openModal(shareUrl);
+          }
+        }
+      } else {
+        openModal(shareUrl);
+      }
+    } finally {
+      setBusy(false);
     }
-  }, [getShareUrl, getShortenedUrl, openModal, selectedTtl, selectedTtlLabel]);
+  }, [getShareFile, getShareUrl, getShortenedUrl, openModal, selectedTtl, selectedTtlLabel]);
 
   const handleCopy = useCallback(() => {
     if (!modal.open) return;

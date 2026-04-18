@@ -8,6 +8,7 @@ export interface MapState {
   strokes: Stroke[];
   pin?: [number, number] | null;
   pins?: Array<[number, number, string, string?, string?]>;
+  areaPins?: Array<[number, string, string]>;
 }
 
 // ─── Palette (must stay in sync with DrawingControls.tsx) ─────────────────────
@@ -16,6 +17,7 @@ const WIDTHS = [2, 4, 6];
 
 // ─── Versioning prefixes ───────────────────────────────────────────────────────
 const V2_PREFIX = 'v2:';
+const V3_PREFIX = 'v3:';
 
 // ─── Integer ↔ float helpers (5 decimal places ≈ 1 m precision) ───────────────
 function i5(v: number): number { return Math.round(v * 1e5); }
@@ -53,7 +55,8 @@ function fromBase64Url(str: string): Uint8Array {
 }
 
 // ─── Compact v2 wire format ────────────────────────────────────────────────────
-// [centerLat5, centerLng5, zoom, pin|null, strokes, pins]
+// v2: [centerLat5, centerLng5, zoom, pin|null, strokes, pins]
+// v3: [centerLat5, centerLng5, zoom, pin|null, strokes, pins, areaPins]
 // stroke: [colorIdxOrHex, widthIdx, flatDeltaPoints]
 //   flatDeltaPoints: [lat5_0, lng5_0, Δlat5_1, Δlng5_1, …]  (all integers)
 // pin: [lat5, lng5] | null
@@ -62,6 +65,16 @@ type CompactColor = number | string;
 type CompactStroke = [CompactColor, number, number[]];
 type CompactPin = [number, number, CompactColor] | [number, number, CompactColor, string, string];
 type CompactV2 = [number, number, number, [number, number] | null, CompactStroke[], CompactPin[]];
+type CompactAreaPin = [number, string, string];
+type CompactV3 = [
+  number,
+  number,
+  number,
+  [number, number] | null,
+  CompactStroke[],
+  CompactPin[],
+  CompactAreaPin[],
+];
 
 function toCompactV2(state: MapState): CompactV2 {
   const strokes: CompactStroke[] = state.strokes.map((s) => {
@@ -126,25 +139,54 @@ function fromCompactV2(c: CompactV2): MapState {
   };
 }
 
+function toCompactV3(state: MapState): CompactV3 {
+  const compactV2 = toCompactV2(state);
+
+  return [
+    compactV2[0],
+    compactV2[1],
+    compactV2[2],
+    compactV2[3],
+    compactV2[4],
+    compactV2[5],
+    (state.areaPins ?? []).map(([placeId, title, description]) => [placeId, title, description]),
+  ];
+}
+
+function fromCompactV3(c: CompactV3): MapState {
+  const [cLat5, cLng5, zoom, pinRaw, strokesRaw, pinsRaw, areaPinsRaw] = c;
+
+  return {
+    ...fromCompactV2([cLat5, cLng5, zoom, pinRaw, strokesRaw, pinsRaw]),
+    areaPins: areaPinsRaw.map(([placeId, title, description]) => [placeId, title, description]),
+  };
+}
+
 // ─── Public encode / decode ────────────────────────────────────────────────────
 
 /**
  * Encode MapState as a URL-safe string.
- * Pipeline: compact positional format → JSON → DEFLATE → base64url, prefixed with "v2:".
+ * Pipeline: compact positional format → JSON → DEFLATE → base64url, prefixed with "v2:" or "v3:".
  */
 export function encodeMapState(state: MapState): string {
-  const json = JSON.stringify(toCompactV2(state));
+  const hasAreaPins = (state.areaPins?.length ?? 0) > 0;
+  const json = JSON.stringify(hasAreaPins ? toCompactV3(state) : toCompactV2(state));
   const compressed = deflateSync(new TextEncoder().encode(json), { level: 9 });
-  return V2_PREFIX + toBase64Url(compressed);
+  return (hasAreaPins ? V3_PREFIX : V2_PREFIX) + toBase64Url(compressed);
 }
 
 /** Decode a MapState string produced by encodeMapState. */
 export function decodeMapState(encoded: string): MapState | null {
   try {
-    if (!encoded.startsWith(V2_PREFIX)) return null;
-    const compressed = fromBase64Url(encoded.slice(V2_PREFIX.length));
+    if (!encoded.startsWith(V2_PREFIX) && !encoded.startsWith(V3_PREFIX)) return null;
+
+    const isV3 = encoded.startsWith(V3_PREFIX);
+    const prefix = isV3 ? V3_PREFIX : V2_PREFIX;
+    const compressed = fromBase64Url(encoded.slice(prefix.length));
     const json = new TextDecoder().decode(inflateSync(compressed));
-    return fromCompactV2(JSON.parse(json) as CompactV2);
+    return isV3
+      ? fromCompactV3(JSON.parse(json) as CompactV3)
+      : fromCompactV2(JSON.parse(json) as CompactV2);
   } catch {
     return null;
   }
