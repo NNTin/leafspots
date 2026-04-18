@@ -1,4 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
+import { flushSync } from 'react-dom';
+import type { Map as LeafletMap } from 'leaflet';
 import type { Coordinates } from './utils/distance';
 import MapView from './components/MapView';
 import LocationInput from './components/LocationInput';
@@ -23,19 +25,12 @@ import './App.css';
 
 const BAVARIA_CENTER: [number, number] = [48.79, 11.5];
 const DEFAULT_ZOOM = 8;
-const SHARE_CAPTURE_LAYOUT_DELAY_MS = 250;
 type ShareToastTone = 'success' | 'error';
 type ShareToast = { message: string; tone: ShareToastTone } | null;
 type EditingMarker =
   | { kind: 'custom-pin'; id: string }
   | { kind: 'event-area'; placeId: number };
 type EventAreaMarkerOverrideMap = Record<number, { title: string; description: string }>;
-
-function waitForShareCaptureLayout(): Promise<void> {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, SHARE_CAPTURE_LAYOUT_DELAY_MS);
-  });
-}
 
 // Read any saved state from the URL once at module load time
 const urlState = loadStateFromUrl();
@@ -72,6 +67,7 @@ function App() {
   const editTitleRef = useRef<HTMLInputElement>(null);
   const shareToastTimeoutRef = useRef<number | null>(null);
   const mapViewRef = useRef<HTMLDivElement>(null);
+  const leafletMapRef = useRef<LeafletMap | null>(null);
 
   // Track current map view via refs (no re-render needed)
   const mapCenterRef = useRef<[number, number]>(urlState?.center ?? BAVARIA_CENTER);
@@ -157,6 +153,10 @@ function App() {
   const handleViewChange = useCallback((center: [number, number], zoom: number) => {
     mapCenterRef.current = center;
     mapZoomRef.current = zoom;
+  }, []);
+
+  const handleMapReady = useCallback((map: LeafletMap) => {
+    leafletMapRef.current = map;
   }, []);
 
   const showShareMessage = useCallback((message: string, tone: ShareToastTone = 'success') => {
@@ -269,20 +269,28 @@ function App() {
   }, [eventAreaMarkerOverrides, strokes, userLocation, pins]);
 
   const getShareFile = useCallback(async (): Promise<File | null> => {
-    if (!mapViewRef.current) return null;
+    const mapElement = mapViewRef.current;
+    if (!mapElement) return null;
 
     const shouldExpandMapForCapture = sidebarOpen;
 
     if (shouldExpandMapForCapture) {
-      setShareCaptureActive(true);
-      await waitForShareCaptureLayout();
+      flushSync(() => {
+        setShareCaptureActive(true);
+      });
+      mapElement.getBoundingClientRect();
+      leafletMapRef.current?.invalidateSize({ pan: false });
     }
 
     try {
-      return await captureMapViewImage(mapViewRef.current);
+      return await captureMapViewImage(mapElement);
     } finally {
       if (shouldExpandMapForCapture) {
-        setShareCaptureActive(false);
+        flushSync(() => {
+          setShareCaptureActive(false);
+        });
+        mapElement.getBoundingClientRect();
+        leafletMapRef.current?.invalidateSize({ pan: false });
       }
     }
   }, [sidebarOpen]);
@@ -454,6 +462,7 @@ function App() {
             onViewChange={handleViewChange}
             sidebarOpen={sidebarOpen}
             layoutInvalidationKey={shareCaptureActive ? 'share-capture' : 'default'}
+            onMapReady={handleMapReady}
             pins={pins}
             pinMode={pinMode}
             pinColor={pinColor}

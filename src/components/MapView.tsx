@@ -1,5 +1,6 @@
 import { forwardRef, useEffect } from 'react';
 import { MapContainer, TileLayer, useMapEvents, useMap } from 'react-leaflet';
+import type { Map as LeafletMap } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Coordinates } from '../utils/distance';
 import { haversineDistance } from '../utils/distance';
@@ -21,6 +22,7 @@ interface MapViewProps {
   onViewChange: (center: [number, number], zoom: number) => void;
   sidebarOpen: boolean;
   layoutInvalidationKey?: string;
+  onMapReady?: (map: LeafletMap) => void;
   pins: CustomPin[];
   pinMode: boolean;
   pinColor: string;
@@ -36,7 +38,6 @@ const BAVARIA_CENTER: [number, number] = [48.79, 11.5];
 const DEFAULT_ZOOM = 8;
 const MAP_MAX_ZOOM = 21;
 const TILE_MAX_NATIVE_ZOOM = 19;
-const TILE_LAYER_MAX_ZOOM = MAP_MAX_ZOOM + 1;
 
 function MapStateTracker({
   onViewChange,
@@ -53,6 +54,20 @@ function MapStateTracker({
       onViewChange([c.lat, c.lng], e.target.getZoom());
     },
   });
+  return null;
+}
+
+function MapInstanceReporter({
+  onMapReady,
+}: {
+  onMapReady?: (map: LeafletMap) => void;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    onMapReady?.(map);
+  }, [map, onMapReady]);
+
   return null;
 }
 
@@ -91,9 +106,19 @@ function MapCursorHandler({ pinMode }: { pinMode: boolean }) {
 function MapSizeInvalidator({ layoutInvalidationKey }: { layoutInvalidationKey: string }) {
   const map = useMap();
   useEffect(() => {
-    // Delay lets CSS transitions finish before reflowing
-    const id = setTimeout(() => map.invalidateSize(), 200);
-    return () => clearTimeout(id);
+    let innerFrameId = 0;
+    const frameId = window.requestAnimationFrame(() => {
+      innerFrameId = window.requestAnimationFrame(() => {
+        map.invalidateSize({ pan: false });
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      if (innerFrameId !== 0) {
+        window.cancelAnimationFrame(innerFrameId);
+      }
+    };
   }, [layoutInvalidationKey, map]);
   return null;
 }
@@ -110,6 +135,7 @@ const MapView = forwardRef<HTMLDivElement, MapViewProps>(function MapView({
   onViewChange,
   sidebarOpen,
   layoutInvalidationKey = 'default',
+  onMapReady,
   pins,
   pinMode,
   pinColor,
@@ -132,11 +158,11 @@ const MapView = forwardRef<HTMLDivElement, MapViewProps>(function MapView({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           maxNativeZoom={TILE_MAX_NATIVE_ZOOM}
-          // Leaflet's retina mode internally asks for one more zoom level.
-          // Without this extra headroom, mobile retina devices can hit the
-          // map max zoom and end up with blank tiles.
-          maxZoom={TILE_LAYER_MAX_ZOOM}
-          detectRetina={true}
+          maxZoom={MAP_MAX_ZOOM}
+          // Standard OSM tiles top out at z19. Leaflet's retina mode bumps the
+          // requested URL zoom level, which blanks the layer at the app's max
+          // zoom on mobile retina devices.
+          detectRetina={false}
           crossOrigin={true}
         />
         {userLocation && (
@@ -153,6 +179,7 @@ const MapView = forwardRef<HTMLDivElement, MapViewProps>(function MapView({
           markerOverrides={eventAreaMarkerOverrides}
           onEditMarker={onEditAreaMarker}
         />
+        <MapInstanceReporter onMapReady={onMapReady} />
         <MapStateTracker onViewChange={onViewChange} />
         <MapSizeInvalidator layoutInvalidationKey={`${sidebarOpen ? 'open' : 'closed'}:${layoutInvalidationKey}`} />
         <PinPlacementHandler pinMode={pinMode} pinColor={pinColor} onPinAdd={onPinAdd} />
