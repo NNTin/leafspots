@@ -50,7 +50,7 @@ function buildShareText(
   expiresAt?: number | null,
 ): string {
   if (!selectedTtl) return SHARE_TEXT;
-  if (selectedTtl === 'never' || expiresAt === null) {
+  if (selectedTtl === 'never') {
     return `${SHARE_TEXT}. This short link never expires.`;
   }
 

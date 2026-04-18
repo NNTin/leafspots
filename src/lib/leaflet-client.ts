@@ -146,11 +146,12 @@ function pruneShortenCache(
 }
 
 function getCachedShortUrl(scope: string, longUrl: string, ttl: string): CachedShortUrlEntry | null {
-  const entries = pruneShortenCache(readShortenCache());
+  const originalEntries = readShortenCache();
+  const entries = pruneShortenCache(originalEntries);
   const key = makeShortenCacheKey(scope, longUrl, ttl);
   const entry = entries[key] ?? null;
 
-  if (Object.keys(entries).length !== Object.keys(readShortenCache()).length) {
+  if (Object.keys(entries).length !== Object.keys(originalEntries).length) {
     writeShortenCache(entries);
   }
 

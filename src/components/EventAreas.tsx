@@ -284,6 +284,7 @@ function EventAreasInner({
           key={area.place_id}
           data={area.geojson as Geometry}
           style={{ fillOpacity: 0.05, fillColor: '#3388ff' }}
+          interactive={false}
         />
       ))}
       {zoom >= SHAPES_MIN_ZOOM && shapesOverlayBounds && (

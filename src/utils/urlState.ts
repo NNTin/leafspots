@@ -166,12 +166,13 @@ function fromCompactV3(c: CompactV3): MapState {
 
 /**
  * Encode MapState as a URL-safe string.
- * Pipeline: compact positional format → JSON → DEFLATE → base64url, prefixed with "v3:".
+ * Pipeline: compact positional format → JSON → DEFLATE → base64url, prefixed with "v2:" or "v3:".
  */
 export function encodeMapState(state: MapState): string {
-  const json = JSON.stringify(toCompactV3(state));
+  const hasAreaPins = (state.areaPins?.length ?? 0) > 0;
+  const json = JSON.stringify(hasAreaPins ? toCompactV3(state) : toCompactV2(state));
   const compressed = deflateSync(new TextEncoder().encode(json), { level: 9 });
-  return V3_PREFIX + toBase64Url(compressed);
+  return (hasAreaPins ? V3_PREFIX : V2_PREFIX) + toBase64Url(compressed);
 }
 
 /** Decode a MapState string produced by encodeMapState. */
