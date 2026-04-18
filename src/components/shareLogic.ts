@@ -67,6 +67,10 @@ function buildShareText(
   return `${SHARE_TEXT}. This short link expires in ${ttlText} at ${formatUtcTimestamp(nextExpiresAt)}.`;
 }
 
+function buildFileShareText(shareText: string, shareUrl: string): string {
+  return `${shareText}\n${shareUrl}`;
+}
+
 export type ShareModalState =
   | { open: false }
   | { open: true; url: string; shortenError?: string };
@@ -139,17 +143,26 @@ export function useConnectedShare({
             }
           }
 
-          const shareData: ShareData = {
+          if (shareFile && navigator.canShare?.({ files: [shareFile] })) {
+            // Android share targets don't have a dedicated URL field, and mixed
+            // `url` + `files` payloads are commonly flattened or partially
+            // discarded. Keep file shares file-first and inline the link into
+            // the text body instead.
+            const fileShareData: ShareData = {
+              title: SHARE_TITLE,
+              text: buildFileShareText(shareText, shareUrl),
+              files: [shareFile],
+            };
+
+            await navigator.share(fileShareData);
+            return;
+          }
+
+          await navigator.share({
             title: SHARE_TITLE,
             text: shareText,
             url: shareUrl,
-          };
-
-          if (shareFile && navigator.canShare?.({ files: [shareFile] })) {
-            shareData.files = [shareFile];
-          }
-
-          await navigator.share(shareData);
+          });
         } catch (err) {
           if (err instanceof Error && err.name !== 'AbortError') {
             openModal(shareUrl);
